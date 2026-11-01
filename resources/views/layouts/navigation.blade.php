@@ -20,7 +20,7 @@
                     </x-nav-link>
                     @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                         <x-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
-                            {{ __('Technician') }}
+                            {{ __('My assignments') }}
                         </x-nav-link>
                     @endif
                     @can('manage', App\Models\Ticket::class)
@@ -93,7 +93,7 @@
             </x-responsive-nav-link>
             @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                 <x-responsive-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
-                    {{ __('Technician') }}
+                    {{ __('My assignments') }}
                 </x-responsive-nav-link>
             @endif
             @can('manage', App\Models\Ticket::class)

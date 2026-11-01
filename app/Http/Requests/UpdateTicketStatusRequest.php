@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Admin;
+namespace App\Http\Requests;
 
 use App\Enums\TicketStatus;
 use Illuminate\Contracts\Validation\ValidationRule;

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Enums\TicketStatus;
+use App\Enums\UserRole;
 use PHPUnit\Framework\TestCase;
 
 class TicketStatusTest extends TestCase
@@ -21,5 +22,22 @@ class TicketStatusTest extends TestCase
         $this->assertFalse(TicketStatus::Open->canTransitionTo(TicketStatus::Closed));
         $this->assertFalse(TicketStatus::InProgress->canTransitionTo(TicketStatus::Open));
         $this->assertSame([], TicketStatus::Closed->allowedTransitions());
+    }
+
+    public function test_each_role_may_only_set_its_own_part_of_the_workflow(): void
+    {
+        $this->assertSame([TicketStatus::InProgress], TicketStatus::Assigned->transitionsFor(UserRole::Technician));
+        $this->assertSame([TicketStatus::Resolved], TicketStatus::InProgress->transitionsFor(UserRole::Technician));
+        $this->assertSame([], TicketStatus::Resolved->transitionsFor(UserRole::Technician));
+        $this->assertSame([], TicketStatus::Open->transitionsFor(UserRole::Technician));
+
+        $this->assertSame([TicketStatus::InProgress], TicketStatus::Assigned->transitionsFor(UserRole::Admin));
+        $this->assertSame([TicketStatus::Closed], TicketStatus::Resolved->transitionsFor(UserRole::Admin));
+        $this->assertSame([], TicketStatus::Open->transitionsFor(UserRole::Admin));
+
+        foreach (TicketStatus::cases() as $status) {
+            $this->assertSame([], $status->transitionsFor(UserRole::User));
+            $this->assertNotContains(TicketStatus::Assigned, $status->transitionsFor(UserRole::Admin));
+        }
     }
 }

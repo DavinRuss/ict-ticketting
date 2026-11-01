@@ -62,9 +62,10 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Walk two samples through the workflow so the admin screens show history.
+        // Walk two samples through the workflow so the admin and technician screens show history.
         $tickets->assign($created[0], $technician, $admin);
-        $tickets->changeStatus($created[0], TicketStatus::InProgress, $admin);
+        $tickets->changeStatus($created[0], TicketStatus::InProgress, $technician);
+        $tickets->addWorkNote($created[0], $technician, 'Checked the charger and battery health; ordering a replacement battery.');
         $tickets->assign($created[1], $technician, $admin);
     }
 }

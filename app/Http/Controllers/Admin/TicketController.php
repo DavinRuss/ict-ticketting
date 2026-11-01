@@ -7,7 +7,7 @@ use App\Enums\TicketStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignTicketRequest;
-use App\Http\Requests\Admin\UpdateTicketStatusRequest;
+use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\User;
@@ -89,10 +89,7 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'technicians' => User::where('role', UserRole::Technician)->where('is_active', true)->orderBy('name')->get(),
             'canAssign' => $ticket->status->canTransitionTo(TicketStatus::Assigned),
-            'nextStatuses' => array_values(array_filter(
-                $ticket->status->allowedTransitions(),
-                fn (TicketStatus $status) => $status !== TicketStatus::Assigned,
-            )),
+            'nextStatuses' => $ticket->status->transitionsFor(UserRole::Admin),
         ]);
     }
 

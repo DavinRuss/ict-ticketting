@@ -61,7 +61,7 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        $ticket->load(['category', 'technician', 'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
+        $ticket->load(['category', 'technician', 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
 
         return view('tickets.show', ['ticket' => $ticket]);
     }

@@ -33,6 +33,28 @@ enum TicketStatus: string
         return in_array($next, $this->allowedTransitions(), true);
     }
 
+    /**
+     * Statuses a role may set from this one with a status change. Assigning is
+     * separate (it needs a technician) and only admins do it.
+     * Technicians resolve their own work directly; confirming it by closing a
+     * resolved ticket is for the requester or an admin.
+     *
+     * @return list<self>
+     */
+    public function transitionsFor(UserRole $role): array
+    {
+        $permitted = match ($role) {
+            UserRole::Admin => [self::InProgress, self::Resolved, self::Closed],
+            UserRole::Technician => [self::InProgress, self::Resolved],
+            UserRole::User => [],
+        };
+
+        return array_values(array_filter(
+            $this->allowedTransitions(),
+            fn (self $next) => in_array($next, $permitted, true),
+        ));
+    }
+
     public function label(): string
     {
         return match ($this) {

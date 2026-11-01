@@ -1,6 +1,6 @@
 # IT Helpdesk
 
-IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, and admin ticket management (assignment and status changes).
+IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, admin ticket management (assignment and status changes), and the technician workspace (assigned tickets, work notes, starting and resolving work).
 
 ## Requirements
 
@@ -92,7 +92,7 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | --- | --- | --- | --- |
 | Dashboard, Profile, password change | yes | yes | yes |
 | My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
-| Technician workspace (`/technician`) | no | yes | no |
+| Technician workspace (`/technician`): **own assigned** tickets, work notes, start and resolve work | no | yes | no |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
 | All tickets (`/admin/tickets`): list and filter every ticket, assign/reassign technicians, change status | no | no | yes |
 
@@ -112,15 +112,23 @@ There's no delete. Deactivate accounts instead.
 - **Privacy**: `App\Policies\TicketPolicy` lets users open only their own tickets. Opening someone else's ticket by changing the URL gives a 403. The list and the dashboard counts are always scoped to the signed-in user.
 - **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`; reassigning keeps a ticket `assigned`). Users can't change status.
 
+### Technician workspace (`/technician`, "My assignments" in the nav)
+
+- **Visibility**: a technician sees only tickets **currently** assigned to them (`TicketPolicy::work()`; lists start from `assignedTickets()`). After a reassignment the previous technician gets a 403. Admins use `/admin/tickets` instead.
+- **Dashboard and list**: counts by status, a "Needs your work" list (assigned or in progress), and a 15-per-page list filterable by status (including "Needs work") and priority.
+- **Status changes**: a technician may only move their ticket `assigned -> in_progress` (stamps `started_at`) and `in_progress -> resolved` (stamps `resolved_at`). They can't assign, reassign, close, skip or reverse a status, or change the requester; anything else gets a clear error. `TicketStatus::transitionsFor(UserRole)` defines which statuses each role may set, and `TicketService::changeStatus()` enforces it under a row lock (also rejecting a technician whose ticket was reassigned meanwhile).
+- **Work notes**: internal notes recorded as `ticket_activities` rows (`action = work_note`) with author and time. They show to the technician and admins with an "Internal" badge and are **hidden from the requester**. Notes typed with a status change are shown to the requester. Closed tickets take no new notes.
+- **Resolution choice**: technicians mark work **Resolved directly**. There's no separate "awaiting confirmation" status. The requester's confirmation is closing the resolved ticket (or an admin closes it), which keeps the agreed `open -> assigned -> in_progress -> resolved -> closed` lifecycle unchanged.
+
 ### Admin ticket management (`/admin/tickets`, "All tickets" in the nav)
 
 - **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned").
 - **Assign / reassign**: only to an **active technician** account; users, admins, deactivated technicians and unknown ids are rejected. Only `open` or `assigned` tickets can be (re)assigned. Assigning sets `assigned_to`, `assigned_by` (the acting admin), `assigned_at` and status `assigned`.
-- **Status changes**: the admin picks the next status from those `TicketStatus` allows (`assigned -> in_progress -> resolved -> closed`). Anything else, including stale forms, gets "A ticket cannot move from X to Y." Moving to `in_progress`, `resolved` or `closed` stamps `started_at`, `resolved_at` or `closed_at`.
+- **Status changes**: the admin picks the next status from those `TicketStatus::transitionsFor(UserRole::Admin)` allows (`assigned -> in_progress -> resolved -> closed`). Anything else, including stale forms, gets "A ticket cannot move from X to Y." Moving to `in_progress`, `resolved` or `closed` stamps `started_at`, `resolved_at` or `closed_at`.
 - **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
 - **Consistency**: `App\Services\TicketService::assign()` and `changeStatus()` update the ticket and write the history row in one database transaction, with the ticket row locked, so checks use the current state and a failed history write rolls back the change.
 - **Categories**: `CategorySeeder` adds Hardware, Software, Network, Email, Printer and Account/Access. It runs in every environment (including production) and is safe to re-run: `php artisan db:seed --class=CategorySeeder`.
-- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com` and in progress, one assigned, three open.
+- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com`, in progress and with a work note, one assigned, three open.
 
 ## Tests
 

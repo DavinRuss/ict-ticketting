@@ -85,8 +85,8 @@ class TicketService
     }
 
     /**
-     * Move a ticket to the next status allowed by TicketStatus and log who did it.
-     * Assigning goes through assign(), because it also needs a technician.
+     * Move a ticket to the next status allowed by TicketStatus for the actor's role
+     * and log who did it. Assigning goes through assign(), because it also needs a technician.
      */
     public function changeStatus(Ticket $ticket, TicketStatus $to, User $actor, ?string $note = null): Ticket
     {
@@ -94,12 +94,18 @@ class TicketService
             $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
             $from = $ticket->status;
 
+            $this->ensureStillAssigned($ticket, $actor, 'status', 'status');
+
             if ($to === TicketStatus::Assigned) {
-                throw $this->rejected('status', 'status', __('Use the assignment form to assign or reassign a technician.'));
+                throw $this->rejected('status', 'status', __('Only an admin can assign or reassign a technician, using the assignment form.'));
             }
 
             if (! $from->canTransitionTo($to)) {
                 throw $this->rejected('status', 'status', __('A ticket cannot move from :from to :to.', ['from' => $from->label(), 'to' => $to->label()]));
+            }
+
+            if (! in_array($to, $from->transitionsFor($actor->role), true)) {
+                throw $this->rejected('status', 'status', __('A :role cannot move a ticket to :to.', ['role' => strtolower($actor->role->label()), 'to' => $to->label()]));
             }
 
             $ticket->status = $to;
@@ -123,6 +129,39 @@ class TicketService
 
             return $ticket;
         });
+    }
+
+    /**
+     * Add an internal work note (hidden from the requester) to the ticket's history.
+     */
+    public function addWorkNote(Ticket $ticket, User $actor, string $note): TicketActivity
+    {
+        return DB::transaction(function () use ($ticket, $actor, $note) {
+            $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
+
+            $this->ensureStillAssigned($ticket, $actor, 'note', 'note');
+
+            if ($ticket->status === TicketStatus::Closed) {
+                throw $this->rejected('note', 'note', __('This ticket is closed. Work notes can no longer be added.'));
+            }
+
+            return $ticket->activities()->create([
+                'user_id' => $actor->id,
+                'action' => TicketActivity::ACTION_WORK_NOTE,
+                'note' => $note,
+            ]);
+        });
+    }
+
+    /**
+     * A technician acts only on a ticket that is still assigned to them; it may have
+     * been reassigned after their page loaded.
+     */
+    private function ensureStillAssigned(Ticket $ticket, User $actor, string $errorBag, string $field): void
+    {
+        if ($actor->hasRole(UserRole::Technician) && $ticket->assigned_to !== $actor->id) {
+            throw $this->rejected($errorBag, $field, __('This ticket is no longer assigned to you.'));
+        }
     }
 
     private function rejected(string $errorBag, string $field, string $message): ValidationException

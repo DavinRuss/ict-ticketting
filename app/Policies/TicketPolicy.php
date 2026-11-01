@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\Ticket;
 use App\Models\User;
 
@@ -41,8 +42,24 @@ class TicketPolicy
         return $actor->isAdmin();
     }
 
+    /**
+     * Technician workspace (/technician/tickets/{ticket}): only the technician the ticket is assigned to now.
+     */
+    public function work(User $actor, Ticket $ticket): bool
+    {
+        return $actor->hasRole(UserRole::Technician) && $ticket->assigned_to === $actor->id;
+    }
+
+    public function addWorkNote(User $actor, Ticket $ticket): bool
+    {
+        return $this->work($actor, $ticket);
+    }
+
+    /**
+     * Which statuses each role may set is decided by TicketStatus::transitionsFor().
+     */
     public function changeStatus(User $actor, Ticket $ticket): bool
     {
-        return $actor->isAdmin();
+        return $actor->isAdmin() || $this->work($actor, $ticket);
     }
 }
