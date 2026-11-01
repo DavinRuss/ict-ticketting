@@ -6,19 +6,19 @@ IT service ticketing app built with Laravel. Built so far: account access (login
 
 - PHP 8.3+ with the `pdo_mysql`, `mbstring`, `xml`, `curl`, `zip`, `bcmath` and `intl` extensions
 - Composer 2
-- MySQL 8
+- MariaDB 10.6+ (WAMP ships MariaDB 11.4)
 - Node.js 20+ and npm (to build the Tailwind CSS and JS assets)
 
-Tested with Laravel 13.39, PHP 8.3.36, MySQL 8.0.46, Composer 2.11.1 and Node 22.
+Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node 22.
 
 ## Initial setup
 
 1. Create the database and a dedicated user. Use your own strong password and keep it out of git:
 
    ```sql
-   CREATE DATABASE it_helpdesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE DATABASE tickets_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    CREATE USER 'it_helpdesk'@'localhost' IDENTIFIED BY 'choose-a-strong-password';
-   GRANT ALL PRIVILEGES ON it_helpdesk.* TO 'it_helpdesk'@'localhost';
+   GRANT ALL PRIVILEGES ON tickets_db.* TO 'it_helpdesk'@'localhost';
    FLUSH PRIVILEGES;
    ```
 
@@ -58,9 +58,9 @@ Tested with Laravel 13.39, PHP 8.3.36, MySQL 8.0.46, Composer 2.11.1 and Node 22
 | `APP_KEY` | generated | Set by `php artisan key:generate`. Keep it secret. |
 | `APP_DEBUG` | `true` locally, `false` in production | Must be `false` in production so stack traces are never shown. |
 | `APP_URL` | `http://localhost:8000` | Used to build password-reset links. |
-| `DB_CONNECTION` | `mysql` | |
-| `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | |
-| `DB_DATABASE` | `it_helpdesk` | |
+| `DB_CONNECTION` | `mariadb` | Laravel's MariaDB driver (uses `pdo_mysql`). |
+| `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | WAMP's MariaDB listens on `3307`. |
+| `DB_DATABASE` | `tickets_db` | |
 | `DB_USERNAME` | `it_helpdesk` | |
 | `DB_PASSWORD` | *(your password)* | Required. Left empty in `.env.example` on purpose. |
 | `SESSION_DRIVER` | `database` | Sessions are stored in the `sessions` table. |
@@ -109,8 +109,8 @@ php artisan test           # uses in-memory SQLite (phpunit.xml)
 ./vendor/bin/pint --test   # code style
 ```
 
-To run the tests against MySQL, create an empty `it_helpdesk_test` database and run:
+To run the tests against MariaDB, create an empty `tickets_db_test` database and run:
 
 ```sh
-DB_CONNECTION=mysql DB_DATABASE=it_helpdesk_test php artisan test
+DB_CONNECTION=mariadb DB_DATABASE=tickets_db_test php artisan test
 ```
