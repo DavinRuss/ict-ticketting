@@ -15,7 +15,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (app()->isProduction()) {
+            $this->command?->warn('Skipping sample accounts in production. Use php artisan app:create-admin instead.');
+
+            return;
+        }
+
+        // Local sample accounts only; all use the password "password".
+        User::factory()->admin()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+        ]);
+
+        User::factory()->technician()->create([
+            'name' => 'Tech User',
+            'email' => 'tech@example.com',
+        ]);
 
         User::factory()->create([
             'name' => 'Test User',

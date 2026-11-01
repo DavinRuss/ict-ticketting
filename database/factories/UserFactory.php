@@ -46,6 +46,20 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+        ]);
+    }
+
+    public function technician(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Technician,
+        ]);
+    }
+
     /**
      * Indicate that the account has been deactivated.
      */

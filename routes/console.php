@@ -47,3 +47,27 @@ Artisan::command('app:create-admin {email} {--name=Administrator}', function (st
 
     return 0;
 })->purpose('Create an administrator account (prompts for the password)');
+
+Artisan::command('app:promote-admin {email}', function (string $email) {
+    $user = User::where('email', $email)->first();
+
+    if (! $user) {
+        $this->error("No account found for {$email}.");
+
+        return 1;
+    }
+
+    if (! $this->confirm("Make {$user->name} <{$email}> an active administrator?")) {
+        $this->line('No changes made.');
+
+        return 1;
+    }
+
+    $user->role = UserRole::Admin;
+    $user->is_active = true;
+    $user->save();
+
+    $this->info("{$email} is now an administrator.");
+
+    return 0;
+})->purpose('Promote an existing account to administrator');

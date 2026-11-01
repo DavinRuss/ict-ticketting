@@ -37,7 +37,6 @@ class AccountAccessTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->get('/login')->assertRedirect('/dashboard');
-        $this->actingAs($user)->get('/register')->assertRedirect('/dashboard');
     }
 
     public function test_unknown_email_cannot_log_in(): void
@@ -91,20 +90,20 @@ class AccountAccessTest extends TestCase
         $this->assertNotSame($before, session()->getId());
     }
 
-    public function test_registration_always_creates_a_regular_active_user(): void
+    public function test_public_registration_is_disabled(): void
     {
+        $this->get('/register')->assertNotFound();
+
         $this->post('/register', [
             'name' => 'Mallory',
             'email' => 'mallory@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
             'role' => 'admin',
-            'is_active' => '0',
-        ])->assertRedirect('/dashboard');
+        ])->assertNotFound();
 
-        $user = User::where('email', 'mallory@example.com')->firstOrFail();
-        $this->assertSame(UserRole::User, $user->role);
-        $this->assertTrue($user->is_active);
+        $this->assertDatabaseMissing('users', ['email' => 'mallory@example.com']);
+        $this->get('/login')->assertDontSee('/register');
     }
 
     public function test_reset_link_request_gives_the_same_response_for_unknown_emails(): void

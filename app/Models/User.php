@@ -42,4 +42,14 @@ class User extends Authenticatable
             'is_active' => 'boolean',
         ];
     }
+
+    public function hasRole(UserRole ...$roles): bool
+    {
+        return in_array($this->role, $roles, true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(UserRole::Admin);
+    }
 }
