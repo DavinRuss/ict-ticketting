@@ -81,7 +81,7 @@ class TicketController extends Controller
         Gate::authorize('manage', Ticket::class);
 
         $ticket->load([
-            'requester', 'category', 'technician', 'assigner',
+            'requester', 'category', 'technician', 'assigner', 'review',
             'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id'),
         ]);
 

@@ -27,6 +27,9 @@
                         <x-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
                             {{ __('All tickets') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('admin.reviews.index')" :active="request()->routeIs('admin.reviews.*')">
+                            {{ __('Feedback') }}
+                        </x-nav-link>
                     @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
@@ -99,6 +102,9 @@
             @can('manage', App\Models\Ticket::class)
                 <x-responsive-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
                     {{ __('All tickets') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.reviews.index')" :active="request()->routeIs('admin.reviews.*')">
+                    {{ __('Feedback') }}
                 </x-responsive-nav-link>
             @endcan
             @can('viewAny', App\Models\User::class)

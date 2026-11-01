@@ -61,8 +61,21 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        $ticket->load(['category', 'technician', 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
+        $ticket->load(['category', 'technician', 'review', 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
 
         return view('tickets.show', ['ticket' => $ticket]);
+    }
+
+    /**
+     * The requester confirms the fix by closing their resolved ticket.
+     */
+    public function close(Request $request, Ticket $ticket, TicketService $tickets): RedirectResponse
+    {
+        Gate::authorize('close', $ticket);
+
+        $ticket = $tickets->changeStatus($ticket, TicketStatus::Closed, $request->user());
+
+        return redirect()->route('tickets.show', $ticket)
+            ->with('success', __(':reference is now closed. Thank you for confirming.', ['reference' => $ticket->reference]));
     }
 }

@@ -16,6 +16,8 @@
                     <p class="mt-2 whitespace-pre-line text-gray-900">{{ $ticket->description }}</p>
                 </div>
 
+                @include('tickets.partials.requester-review', ['ticket' => $ticket])
+
                 @include('tickets.partials.activity-timeline', ['activities' => $ticket->activities])
             </div>
 
@@ -54,7 +56,7 @@
                         <dd class="mt-1 text-gray-900">{{ $ticket->updated_at->format('d M Y, H:i') }}</dd>
                     </div>
                 </dl>
-                <p class="mt-6 text-xs text-gray-500">{{ __('Status and technician are set by the IT team. You will see each change listed under Updates.') }}</p>
+                <p class="mt-6 text-xs text-gray-500">{{ __('Status and technician are set by the IT team. You will see each change listed under Updates. Once the ticket is resolved, you can confirm the fix and rate the service.') }}</p>
             </div>
         </div>
     </div>

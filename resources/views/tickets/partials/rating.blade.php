@@ -1,0 +1,1 @@
+<span class="whitespace-nowrap" role="img" aria-label="{{ __(':rating out of :max stars', ['rating' => $rating, 'max' => App\Models\Review::MAX_RATING]) }}"><span class="text-amber-500">{{ str_repeat('★', $rating) }}</span><span class="text-gray-300">{{ str_repeat('★', App\Models\Review::MAX_RATING - $rating) }}</span></span>

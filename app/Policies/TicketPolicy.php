@@ -56,6 +56,14 @@ class TicketPolicy
     }
 
     /**
+     * The requester confirms a resolved ticket by closing it; TicketService checks the status.
+     */
+    public function close(User $actor, Ticket $ticket): bool
+    {
+        return $this->view($actor, $ticket);
+    }
+
+    /**
      * Which statuses each role may set is decided by TicketStatus::transitionsFor().
      */
     public function changeStatus(User $actor, Ticket $ticket): bool
