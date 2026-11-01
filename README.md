@@ -91,6 +91,7 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | Area | User | Technician | Admin |
 | --- | --- | --- | --- |
 | Dashboard, Profile, password change | yes | yes | yes |
+| My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
 | Technician workspace (`/technician`) | no | yes | no |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
 
@@ -101,6 +102,16 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 - Passwords follow the password rules below.
 
 There's no delete. Deactivate accounts instead.
+
+## Tickets
+
+- **Submitting**: any signed-in user opens **New ticket** and enters a title, description, category (active categories only) and priority (`low`, `medium`, `high`, `urgent`). The ticket always starts as `open`, unassigned, owned by the person who submitted it. Status, owner, technician and reference sent by the browser are ignored.
+- **Reference**: each ticket gets `TKT-000123`, built from its database id right after insert, so references never collide.
+- **History**: every ticket keeps an append-only log in `ticket_activities`. Submitting writes a `created` entry; the ticket page lists these under *Updates*.
+- **Privacy**: `App\Policies\TicketPolicy` lets users open only their own tickets. Opening someone else's ticket by changing the URL gives a 403. The list and the dashboard counts are always scoped to the signed-in user.
+- **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`). Assignment and status changes come in later phases; users can't change status.
+- **Categories**: `CategorySeeder` adds Hardware, Software, Network, Email, Printer and Account/Access. It runs in every environment (including production) and is safe to re-run: `php artisan db:seed --class=CategorySeeder`.
+- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 open tickets for `test@example.com`.
 
 ## Tests
 
