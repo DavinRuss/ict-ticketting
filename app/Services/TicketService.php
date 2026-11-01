@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\Review;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
+use App\Models\TicketComment;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -162,6 +163,25 @@ class TicketService
                 'action' => TicketActivity::ACTION_WORK_NOTE,
                 'note' => $note,
             ]);
+        });
+    }
+
+    /** Add a public comment from the ticket requester. */
+    public function addComment(Ticket $ticket, User $requester, string $body): TicketComment
+    {
+        return DB::transaction(function () use ($ticket, $requester, $body) {
+            $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($ticket->user_id !== $requester->id) {
+                throw $this->rejected('comment', 'body', __('Only the person who submitted this ticket can comment.'));
+            }
+
+            $comment = new TicketComment(['body' => $body]);
+            $comment->ticket()->associate($ticket);
+            $comment->user()->associate($requester);
+            $comment->save();
+
+            return $comment;
         });
     }
 

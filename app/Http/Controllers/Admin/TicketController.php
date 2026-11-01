@@ -7,6 +7,7 @@ use App\Enums\TicketStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignTicketRequest;
+use App\Http\Requests\Admin\TicketIndexRequest as AdminTicketIndexRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Models\Category;
 use App\Models\Ticket;
@@ -14,28 +15,16 @@ use App\Models\User;
 use App\Services\TicketService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class TicketController extends Controller
 {
-    public const UNASSIGNED = 'unassigned';
+    public const UNASSIGNED = AdminTicketIndexRequest::UNASSIGNED;
 
-    public function index(Request $request): View
+    public function index(AdminTicketIndexRequest $request): View
     {
-        Gate::authorize('manage', Ticket::class);
-
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::enum(TicketStatus::class)],
-            'priority' => ['nullable', Rule::enum(TicketPriority::class)],
-            'category' => ['nullable', 'integer', Rule::exists('categories', 'id')],
-            'technician' => ['nullable', Rule::when(
-                $request->input('technician') !== self::UNASSIGNED,
-                ['integer', Rule::exists('users', 'id')->where(fn ($query) => $this->filterableTechnicians($query))],
-            )],
-        ]);
+        $filters = $request->validated();
 
         $tickets = Ticket::query()
             ->with(['requester', 'category', 'technician'])
@@ -56,24 +45,8 @@ class TicketController extends Controller
             'statuses' => TicketStatus::cases(),
             'priorities' => TicketPriority::cases(),
             'categories' => Category::orderBy('name')->get(),
-            'technicians' => $this->filterableTechnicians(User::query())->orderBy('name')->get(),
+            'technicians' => AdminTicketIndexRequest::filterableTechnicians(User::query())->orderBy('name')->get(),
         ]);
-    }
-
-    /**
-     * Current technicians plus anyone still holding an assignment (e.g. since demoted),
-     * so existing assignments stay filterable.
-     *
-     * @template TQuery of \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
-     *
-     * @param  TQuery  $query
-     * @return TQuery
-     */
-    private function filterableTechnicians($query)
-    {
-        return $query->where(fn ($query) => $query
-            ->where('role', UserRole::Technician->value)
-            ->orWhereIn('id', Ticket::query()->select('assigned_to')->whereNotNull('assigned_to')));
     }
 
     public function show(Ticket $ticket): View
@@ -82,11 +55,13 @@ class TicketController extends Controller
 
         $ticket->load([
             'requester', 'category', 'technician', 'assigner', 'review',
-            'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id'),
         ]);
 
         return view('admin.tickets.show', [
             'ticket' => $ticket,
+            'comments' => $ticket->comments()->with('user')->paginate(15, ['*'], 'comments_page')->withQueryString(),
+            'activities' => $ticket->activities()->with(['user', 'fromTechnician', 'toTechnician'])
+                ->oldest()->oldest('id')->paginate(15, ['*'], 'activities_page')->withQueryString(),
             'technicians' => User::where('role', UserRole::Technician)->where('is_active', true)->orderBy('name')->get(),
             'canAssign' => $ticket->status->canTransitionTo(TicketStatus::Assigned),
             'nextStatuses' => $ticket->status->transitionsFor(UserRole::Admin),

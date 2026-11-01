@@ -19,4 +19,6 @@
             </li>
         @endforeach
     </ol>
+
+    {{ $activities->links() }}
 </div>

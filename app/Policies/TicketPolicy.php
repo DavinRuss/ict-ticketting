@@ -50,6 +50,11 @@ class TicketPolicy
         return $actor->hasRole(UserRole::Technician) && $ticket->assigned_to === $actor->id;
     }
 
+    public function viewAssigned(User $actor): bool
+    {
+        return $actor->hasRole(UserRole::Technician);
+    }
+
     public function addWorkNote(User $actor, Ticket $ticket): bool
     {
         return $this->work($actor, $ticket);
@@ -59,6 +64,11 @@ class TicketPolicy
      * The requester confirms a resolved ticket by closing it; TicketService checks the status.
      */
     public function close(User $actor, Ticket $ticket): bool
+    {
+        return $this->view($actor, $ticket);
+    }
+
+    public function comment(User $actor, Ticket $ticket): bool
     {
         return $this->view($actor, $ticket);
     }

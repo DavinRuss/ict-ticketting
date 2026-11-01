@@ -4,25 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Http\Requests\StoreTicketCommentRequest;
 use App\Http\Requests\StoreTicketRequest;
+use App\Http\Requests\TicketIndexRequest;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Services\TicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class TicketController extends Controller
 {
-    public function index(Request $request): View
+    public function index(TicketIndexRequest $request): View
     {
-        Gate::authorize('viewAny', Ticket::class);
-
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::enum(TicketStatus::class)],
-        ]);
+        $filters = $request->validated();
 
         $tickets = $request->user()->tickets()
             ->with(['category', 'technician'])
@@ -61,9 +58,21 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        $ticket->load(['category', 'technician', 'review', 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
+        $ticket->load(['category', 'technician', 'review']);
 
-        return view('tickets.show', ['ticket' => $ticket]);
+        return view('tickets.show', [
+            'ticket' => $ticket,
+            'comments' => $ticket->comments()->with('user')->paginate(15, ['*'], 'comments_page')->withQueryString(),
+            'activities' => $ticket->activities()->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])
+                ->oldest()->oldest('id')->paginate(15, ['*'], 'activities_page')->withQueryString(),
+        ]);
+    }
+
+    public function storeComment(StoreTicketCommentRequest $request, Ticket $ticket, TicketService $tickets): RedirectResponse
+    {
+        $tickets->addComment($ticket, $request->user(), $request->validated('body'));
+
+        return redirect()->route('tickets.show', $ticket)->with('success', __('Comment added.'));
     }
 
     /**

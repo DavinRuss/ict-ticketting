@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show']);
     Route::put('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
+    Route::post('tickets/{ticket}/comments', [TicketController::class, 'storeComment'])->name('tickets.comments.store');
     Route::post('tickets/{ticket}/review', [ReviewController::class, 'store'])->name('tickets.review.store');
     Route::put('tickets/{ticket}/review', [ReviewController::class, 'update'])->name('tickets.review.update');
 });
