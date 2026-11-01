@@ -16,7 +16,7 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                        {{ __('My tickets') }}
+                        {{ Auth::user()->isAdmin() ? __('Tickets') : __('My tickets') }}
                     </x-nav-link>
                     @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                         <x-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
@@ -92,7 +92,7 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                {{ __('My tickets') }}
+                {{ Auth::user()->isAdmin() ? __('Tickets') : __('My tickets') }}
             </x-responsive-nav-link>
             @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                 <x-responsive-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">

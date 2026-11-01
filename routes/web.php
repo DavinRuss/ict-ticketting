@@ -21,6 +21,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show']);
+    Route::put('tickets/{ticket}/assignment', [TicketController::class, 'assign'])->name('tickets.assign');
     Route::put('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
     Route::post('tickets/{ticket}/comments', [TicketController::class, 'storeComment'])->name('tickets.comments.store');
     Route::post('tickets/{ticket}/review', [ReviewController::class, 'store'])->name('tickets.review.store');

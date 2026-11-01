@@ -47,6 +47,12 @@ class TicketService
     public function assign(Ticket $ticket, User $technician, User $actor, ?string $note = null): Ticket
     {
         return DB::transaction(function () use ($ticket, $technician, $actor, $note) {
+            $actor = User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
+
+            if (! $actor->isAdmin() || ! $actor->is_active) {
+                throw $this->rejected('assignment', 'technician_id', __('Only an active admin can assign or reassign a technician.'));
+            }
+
             $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
             $technician = User::query()->whereKey($technician->getKey())->lockForUpdate()->firstOrFail();
 

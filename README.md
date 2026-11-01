@@ -92,7 +92,7 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | Area | User | Technician | Admin |
 | --- | --- | --- | --- |
 | Dashboard, Profile, password change | yes | yes | yes |
-| My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
+| Tickets (`/tickets`): submit and open own tickets; admin list shows all requests and supports quick assignment | yes | yes | yes |
 | Technician workspace (`/technician`): **own assigned** tickets, work notes, start and resolve work | no | yes | no |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
 | All tickets (`/admin/tickets`): list and filter every ticket, assign/reassign technicians, change status | no | no | yes |
@@ -131,7 +131,7 @@ There's no delete. Deactivate accounts instead.
 
 ### Admin ticket management (`/admin/tickets`, "All tickets" in the nav)
 
-- **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned").
+- **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned"). Admins can also assign or reassign directly from `/tickets`.
 - **Assign / reassign**: only to an **active technician** account; users, admins, deactivated technicians and unknown ids are rejected. Only `open` or `assigned` tickets can be (re)assigned. Assigning sets `assigned_to`, `assigned_by` (the acting admin), `assigned_at` and status `assigned`.
 - **Status changes**: the admin picks the next status from those `TicketStatus::transitionsFor(UserRole::Admin)` allows (`assigned -> in_progress -> resolved -> closed`). Anything else, including stale forms, gets "A ticket cannot move from X to Y." Moving to `in_progress`, `resolved` or `closed` stamps `started_at`, `resolved_at` or `closed_at`.
 - **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
