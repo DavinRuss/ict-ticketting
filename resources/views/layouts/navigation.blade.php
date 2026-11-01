@@ -15,6 +15,16 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
+                        <x-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
+                            {{ __('Technician') }}
+                        </x-nav-link>
+                    @endif
+                    @can('viewAny', App\Models\User::class)
+                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                            {{ __('Accounts') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -70,6 +80,16 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
+                <x-responsive-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
+                    {{ __('Technician') }}
+                </x-responsive-nav-link>
+            @endif
+            @can('viewAny', App\Models\User::class)
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                    {{ __('Accounts') }}
+                </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->
