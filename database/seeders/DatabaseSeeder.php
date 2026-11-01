@@ -2,19 +2,23 @@
 
 namespace Database\Seeders;
 
+use App\Enums\TicketPriority;
+use App\Models\Category;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Services\TicketService;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
+     *
+     * Model events stay on: ticket references are generated in Ticket's created event.
      */
     public function run(): void
     {
+        $this->call(CategorySeeder::class);
+
         if (app()->isProduction()) {
             $this->command?->warn('Skipping sample accounts in production. Use php artisan app:create-admin instead.');
 
@@ -32,9 +36,27 @@ class DatabaseSeeder extends Seeder
             'email' => 'tech@example.com',
         ]);
 
-        User::factory()->create([
+        $user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        $categories = Category::pluck('id', 'name');
+        $tickets = app(TicketService::class);
+
+        foreach ([
+            ['Laptop will not power on', 'Hardware', TicketPriority::High],
+            ['Cannot connect to office Wi-Fi', 'Network', TicketPriority::Medium],
+            ['Outlook keeps asking for my password', 'Email', TicketPriority::Medium],
+            ['Second-floor printer jams on every page', 'Printer', TicketPriority::Low],
+            ['Need access to the finance shared drive', 'Account/Access', TicketPriority::Urgent],
+        ] as [$title, $category, $priority]) {
+            $tickets->create($user, [
+                'title' => $title,
+                'description' => "Sample ticket for local development: {$title}.",
+                'category_id' => $categories[$category],
+                'priority' => $priority->value,
+            ]);
+        }
     }
 }
