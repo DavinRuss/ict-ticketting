@@ -110,7 +110,7 @@ There's no delete. Deactivate accounts instead.
 - **Reference**: each ticket gets `TKT-000123`, built from its database id right after insert, so references never collide.
 - **History**: every ticket keeps an append-only log in `ticket_activities`. Submitting writes a `created` entry; the ticket page lists these under *Updates*.
 - **Privacy**: `App\Policies\TicketPolicy` lets users open only their own tickets. Opening someone else's ticket by changing the URL gives a 403. The list and the dashboard counts are always scoped to the signed-in user.
-- **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`; reassigning keeps a ticket `assigned`). Users can't change status.
+- **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`; reassigning keeps a ticket `assigned`). Users can't change status, except closing their own resolved ticket (below).
 
 ### Technician workspace (`/technician`, "My assignments" in the nav)
 
@@ -120,6 +120,13 @@ There's no delete. Deactivate accounts instead.
 - **Work notes**: internal notes recorded as `ticket_activities` rows (`action = work_note`) with author and time. They show to the technician and admins with an "Internal" badge and are **hidden from the requester**. Notes typed with a status change are shown to the requester. Closed tickets take no new notes.
 - **Resolution choice**: technicians mark work **Resolved directly**. There's no separate "awaiting confirmation" status. The requester's confirmation is closing the resolved ticket (or an admin closes it), which keeps the agreed `open -> assigned -> in_progress -> resolved -> closed` lifecycle unchanged.
 
+### Closing and satisfaction reviews
+
+- **Confirming the fix**: on a `resolved` ticket the requester sees **Confirm fix and close** (`PUT /tickets/{ticket}/close`, `TicketPolicy::close()`: owner only). It goes through `TicketService::changeStatus()` using `TicketStatus::transitionsFor(UserRole::User)` (`resolved -> closed` only). It stamps `closed_at` and logs a `status_changed` row by the requester. Admins can also close from their status form.
+- **Reviews**: the requester can rate a `resolved` or `closed` ticket 1–5 stars, with an optional comment of up to 1000 characters (`TicketStatus::acceptsReviews()`). Reviewing is separate from closing, so it can happen before or after.
+- **Rules**: `ReviewPolicy` allows only the ticket's requester to create a review, and only the review's author to edit it. Everyone else, admins included, gets a 403. `StoreReviewRequest` checks the rating server-side (`between:1,5`). `TicketService::submitReview()` locks the ticket and rejects unresolved tickets and second reviews with a clear message. The `reviews.ticket_id` unique index also blocks duplicates at the database level. The ticket and author always come from the route and the signed-in user, never from form input.
+- **Who sees them**: the requester sees and can edit their own review on their ticket page. Admins see it on the admin ticket page and on **Feedback** (`/admin/reviews`): 15 per page, filters by rating and technician, and the average rating for the current filter. Technicians don't see reviews.
+
 ### Admin ticket management (`/admin/tickets`, "All tickets" in the nav)
 
 - **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned").
@@ -128,7 +135,7 @@ There's no delete. Deactivate accounts instead.
 - **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
 - **Consistency**: `App\Services\TicketService::assign()` and `changeStatus()` update the ticket and write the history row in one database transaction, with the ticket row locked, so checks use the current state and a failed history write rolls back the change.
 - **Categories**: `CategorySeeder` adds Hardware, Software, Network, Email, Printer and Account/Access. It runs in every environment (including production) and is safe to re-run: `php artisan db:seed --class=CategorySeeder`.
-- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com`, in progress and with a work note, one assigned, three open.
+- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com`, in progress and with a work note, one assigned, one resolved by the technician with a 5-star review, and two open.
 
 ## Tests
 

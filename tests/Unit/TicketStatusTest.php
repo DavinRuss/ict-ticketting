@@ -24,6 +24,14 @@ class TicketStatusTest extends TestCase
         $this->assertSame([], TicketStatus::Closed->allowedTransitions());
     }
 
+    public function test_reviews_are_only_accepted_once_work_is_done(): void
+    {
+        $this->assertSame(
+            [TicketStatus::Resolved, TicketStatus::Closed],
+            array_values(array_filter(TicketStatus::cases(), fn (TicketStatus $status) => $status->acceptsReviews())),
+        );
+    }
+
     public function test_each_role_may_only_set_its_own_part_of_the_workflow(): void
     {
         $this->assertSame([TicketStatus::InProgress], TicketStatus::Assigned->transitionsFor(UserRole::Technician));
@@ -35,8 +43,12 @@ class TicketStatusTest extends TestCase
         $this->assertSame([TicketStatus::Closed], TicketStatus::Resolved->transitionsFor(UserRole::Admin));
         $this->assertSame([], TicketStatus::Open->transitionsFor(UserRole::Admin));
 
+        $this->assertSame([TicketStatus::Closed], TicketStatus::Resolved->transitionsFor(UserRole::User));
+
         foreach (TicketStatus::cases() as $status) {
-            $this->assertSame([], $status->transitionsFor(UserRole::User));
+            if ($status !== TicketStatus::Resolved) {
+                $this->assertSame([], $status->transitionsFor(UserRole::User));
+            }
             $this->assertNotContains(TicketStatus::Assigned, $status->transitionsFor(UserRole::Admin));
         }
     }

@@ -69,4 +69,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
+
+    /**
+     * Satisfaction reviews this user left on their own tickets.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
 }

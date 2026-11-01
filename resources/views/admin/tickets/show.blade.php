@@ -16,6 +16,15 @@
                     <p class="mt-2 whitespace-pre-line text-gray-900">{{ $ticket->description }}</p>
                 </div>
 
+                <div class="bg-white p-4 sm:p-6 shadow-sm sm:rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-900">{{ __('Requester feedback') }}</h3>
+                    @if ($ticket->review)
+                        @include('tickets.partials.review-summary', ['review' => $ticket->review])
+                    @else
+                        <p class="mt-2 text-sm text-gray-600">{{ $ticket->status->acceptsReviews() ? __('The requester has not reviewed this ticket yet.') : __('The requester can review this ticket once it is resolved.') }}</p>
+                    @endif
+                </div>
+
                 @include('tickets.partials.activity-timeline', ['activities' => $ticket->activities])
             </div>
 
