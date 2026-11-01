@@ -10,8 +10,10 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -70,16 +72,58 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        $user->fill($request->safe()->only(['name', 'email', 'phone']));
+        DB::transaction(function () use ($request, $user) {
+            $user->fill($request->safe()->only(['name', 'email', 'phone']));
 
-        if ($request->user()->can('changeAccess', $user)) {
-            $user->role = $request->enum('role', UserRole::class);
-            $user->is_active = $request->boolean('is_active');
-        }
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
 
-        $user->save();
+            if ($request->user()->can('changeAccess', $user)) {
+                $user->role = $request->enum('role', UserRole::class);
+
+                if ($request->exists('is_active')) {
+                    $user->is_active = $request->boolean('is_active');
+                }
+
+                $this->ensureAnActiveAdminRemains($request->user(), $user);
+            }
+
+            $user->save();
+        });
 
         return redirect()->route('admin.users.index')
             ->with('success', __('Account updated for :email.', ['email' => $user->email]));
+    }
+
+    /**
+     * Demoting or deactivating an admin locks the active admin rows, so two
+     * admins editing each other at the same time cannot both succeed.
+     */
+    private function ensureAnActiveAdminRemains(User $actor, User $user): void
+    {
+        $wasActiveAdmin = $user->getOriginal('role') === UserRole::Admin && $user->getOriginal('is_active');
+
+        if (! $wasActiveAdmin || ($user->isAdmin() && $user->is_active)) {
+            return;
+        }
+
+        $activeAdminIds = User::query()
+            ->where('role', UserRole::Admin)
+            ->where('is_active', true)
+            ->lockForUpdate()
+            ->pluck('id');
+
+        if (! $activeAdminIds->contains($actor->id)) {
+            throw ValidationException::withMessages([
+                'role' => __('Your admin access changed while you were editing. Reload the page and try again.'),
+            ]);
+        }
+
+        if ($activeAdminIds->diff([$user->id])->isEmpty()) {
+            throw ValidationException::withMessages([
+                'role' => __('This change would leave no active admin.'),
+            ]);
+        }
     }
 }

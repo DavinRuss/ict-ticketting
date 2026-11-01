@@ -143,6 +143,67 @@ class UserManagementTest extends TestCase
         $this->assertSame('Alice A.', $this->admin->fresh()->name);
     }
 
+    public function test_an_update_without_is_active_keeps_the_account_active(): void
+    {
+        $user = User::factory()->technician()->create();
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$user->id}", [
+            'name' => 'Pat',
+            'email' => $user->email,
+            'role' => 'technician',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($user->fresh()->is_active);
+    }
+
+    public function test_changing_an_email_clears_its_verification(): void
+    {
+        $user = User::factory()->create(['email' => 'old@example.com']);
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$user->id}", [
+            'name' => $user->name,
+            'email' => 'new@example.com',
+            'role' => 'user',
+            'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_an_admin_whose_access_was_removed_mid_request_cannot_deactivate_the_last_admin(): void
+    {
+        $bob = User::factory()->admin()->create();
+
+        // Simulate the race: Bob's request has already passed the policy check
+        // when Alice's concurrent request deactivates him in the database.
+        User::whereKey($bob->id)->update(['is_active' => false]);
+
+        $this->actingAs($bob)->patch("/admin/users/{$this->admin->id}", [
+            'name' => $this->admin->name,
+            'email' => $this->admin->email,
+            'role' => 'admin',
+            'is_active' => '0',
+        ])->assertSessionHasErrors([
+            'role' => 'Your admin access changed while you were editing. Reload the page and try again.',
+        ]);
+
+        $this->assertTrue($this->admin->fresh()->is_active);
+    }
+
+    public function test_another_admin_can_still_be_demoted_while_one_active_admin_remains(): void
+    {
+        $bob = User::factory()->admin()->create();
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$bob->id}", [
+            'name' => $bob->name,
+            'email' => $bob->email,
+            'role' => 'user',
+            'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(UserRole::User, $bob->fresh()->role);
+    }
+
     public function test_email_must_stay_unique_when_editing(): void
     {
         $user = User::factory()->create();
