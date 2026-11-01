@@ -193,6 +193,16 @@ class RoleAccessTest extends TestCase
             ->assertDontSee(route('technician.dashboard'));
     }
 
+    public function test_theme_toggle_is_available_on_guest_and_authenticated_pages(): void
+    {
+        $this->get('/login')->assertOk()->assertSee('data-theme-toggle', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('data-theme-toggle', false);
+    }
+
     public function test_users_cannot_change_their_own_role_through_the_profile_form(): void
     {
         $user = User::factory()->create();

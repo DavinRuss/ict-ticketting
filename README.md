@@ -70,6 +70,10 @@ Verified with Laravel 13.39, PHP 8.5.12, Composer 2 and Node 22. SQLite is used 
 | `MAIL_MAILER` | `log` | In development, emails (including reset links) are written to `storage/logs/laravel.log`. Use a real SMTP mailer in production. |
 | `MAIL_FROM_ADDRESS` | `helpdesk@yourcompany.com` | Sender address for password-reset emails. |
 
+## Appearance
+
+Use the sun/moon control in the navigation or login screen to switch between light and dark themes. The selection is saved in the current browser and applies across the app.
+
 ## Account access
 
 - **No public sign-up.** As the product brief requires, accounts are created by an admin (Accounts page) or, locally, by the seeder. The first admin comes from `php artisan app:create-admin`.
