@@ -105,6 +105,12 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 
 There's no delete. Deactivate accounts instead.
 
+## Dashboard
+
+- **Admins** see global pending (`open` + `assigned`), in-progress, and finished (`resolved` + `closed`) totals, a 14-day opened/started/resolved/closed trend, ticket volume by service category, technician workload, and recent service activity. The technician filter scopes the metrics and activity to one active technician.
+- **Technicians** see only tickets currently assigned to them; their daily progress counts only status changes they performed.
+- **Requesters** see only their own ticket totals and recent tickets. They never receive other users' or technicians' dashboard data.
+
 ## Tickets
 
 - **Submitting**: any signed-in user opens **New ticket** and enters a title, description, category (active categories only) and priority (`low`, `medium`, `high`, `urgent`). The ticket always starts as `open`, unassigned, owned by the person who submitted it. Status, owner, technician and reference sent by the browser are ignored.
