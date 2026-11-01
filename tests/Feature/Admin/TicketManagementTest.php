@@ -120,6 +120,20 @@ class TicketManagementTest extends TestCase
         $this->assertSame([$toms->id], $ids('status=assigned&priority=low'));
     }
 
+    public function test_tickets_of_a_demoted_technician_stay_filterable(): void
+    {
+        $former = User::factory()->technician()->create(['name' => 'Former Tech']);
+        $ticket = Ticket::factory()->assignedTo($former, $this->admin)->create();
+        Ticket::factory()->create();
+        $former->forceFill(['role' => 'user'])->save();
+
+        $this->actingAs($this->admin)->get("/admin/tickets?technician={$former->id}")
+            ->assertOk()
+            ->assertSessionHasNoErrors()
+            ->assertSee('Former Tech')
+            ->assertViewHas('tickets', fn ($tickets) => $tickets->pluck('id')->all() === [$ticket->id]);
+    }
+
     public function test_invalid_filters_are_rejected(): void
     {
         $user = User::factory()->create();

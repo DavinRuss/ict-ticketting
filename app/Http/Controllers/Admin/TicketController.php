@@ -33,7 +33,7 @@ class TicketController extends Controller
             'category' => ['nullable', 'integer', Rule::exists('categories', 'id')],
             'technician' => ['nullable', Rule::when(
                 $request->input('technician') !== self::UNASSIGNED,
-                ['integer', Rule::exists('users', 'id')->where('role', UserRole::Technician->value)],
+                ['integer', Rule::exists('users', 'id')->where(fn ($query) => $this->filterableTechnicians($query))],
             )],
         ]);
 
@@ -56,8 +56,24 @@ class TicketController extends Controller
             'statuses' => TicketStatus::cases(),
             'priorities' => TicketPriority::cases(),
             'categories' => Category::orderBy('name')->get(),
-            'technicians' => User::where('role', UserRole::Technician)->orderBy('name')->get(),
+            'technicians' => $this->filterableTechnicians(User::query())->orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * Current technicians plus anyone still holding an assignment (e.g. since demoted),
+     * so existing assignments stay filterable.
+     *
+     * @template TQuery of \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
+     *
+     * @param  TQuery  $query
+     * @return TQuery
+     */
+    private function filterableTechnicians($query)
+    {
+        return $query->where(fn ($query) => $query
+            ->where('role', UserRole::Technician->value)
+            ->orWhereIn('id', Ticket::query()->select('assigned_to')->whereNotNull('assigned_to')));
     }
 
     public function show(Ticket $ticket): View
