@@ -32,7 +32,7 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
    php artisan key:generate
    ```
 
-   Then set `DB_PASSWORD` (and anything else in the table below) in `.env`.
+   Then set `DB_PASSWORD` (and anything else in the table below) in `.env`. On WAMP, MariaDB listens on port 3307, so also set `DB_PORT=3307` (port 3306 there is usually MySQL).
 
 3. Create the tables and the first administrator. The command asks for the password, so it never appears in your shell history:
 
