@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\TicketPriority;
+use App\Enums\TicketStatus;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\TicketService;
@@ -26,12 +27,12 @@ class DatabaseSeeder extends Seeder
         }
 
         // Local sample accounts only; all use the password "password".
-        User::factory()->admin()->create([
+        $admin = User::factory()->admin()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
         ]);
 
-        User::factory()->technician()->create([
+        $technician = User::factory()->technician()->create([
             'name' => 'Tech User',
             'email' => 'tech@example.com',
         ]);
@@ -44,6 +45,8 @@ class DatabaseSeeder extends Seeder
         $categories = Category::pluck('id', 'name');
         $tickets = app(TicketService::class);
 
+        $created = [];
+
         foreach ([
             ['Laptop will not power on', 'Hardware', TicketPriority::High],
             ['Cannot connect to office Wi-Fi', 'Network', TicketPriority::Medium],
@@ -51,12 +54,17 @@ class DatabaseSeeder extends Seeder
             ['Second-floor printer jams on every page', 'Printer', TicketPriority::Low],
             ['Need access to the finance shared drive', 'Account/Access', TicketPriority::Urgent],
         ] as [$title, $category, $priority]) {
-            $tickets->create($user, [
+            $created[] = $tickets->create($user, [
                 'title' => $title,
                 'description' => "Sample ticket for local development: {$title}.",
                 'category_id' => $categories[$category],
                 'priority' => $priority->value,
             ]);
         }
+
+        // Walk two samples through the workflow so the admin screens show history.
+        $tickets->assign($created[0], $technician, $admin);
+        $tickets->changeStatus($created[0], TicketStatus::InProgress, $admin);
+        $tickets->assign($created[1], $technician, $admin);
     }
 }

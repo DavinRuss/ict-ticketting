@@ -1,6 +1,6 @@
 # IT Helpdesk
 
-IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, and admin account management. Ticket features are not built yet.
+IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, and admin ticket management (assignment and status changes).
 
 ## Requirements
 
@@ -94,6 +94,7 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
 | Technician workspace (`/technician`) | no | yes | no |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
+| All tickets (`/admin/tickets`): list and filter every ticket, assign/reassign technicians, change status | no | no | yes |
 
 **Admin account screens**: admins can search accounts and filter them by role, create an account with a role and an initial password, and edit name, email, phone, role and active status. Safeguards:
 - Admins can't change their own role or deactivate themselves, so there's always at least one active admin.
@@ -109,9 +110,17 @@ There's no delete. Deactivate accounts instead.
 - **Reference**: each ticket gets `TKT-000123`, built from its database id right after insert, so references never collide.
 - **History**: every ticket keeps an append-only log in `ticket_activities`. Submitting writes a `created` entry; the ticket page lists these under *Updates*.
 - **Privacy**: `App\Policies\TicketPolicy` lets users open only their own tickets. Opening someone else's ticket by changing the URL gives a 403. The list and the dashboard counts are always scoped to the signed-in user.
-- **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`). Assignment and status changes come in later phases; users can't change status.
+- **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`; reassigning keeps a ticket `assigned`). Users can't change status.
+
+### Admin ticket management (`/admin/tickets`, "All tickets" in the nav)
+
+- **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned").
+- **Assign / reassign**: only to an **active technician** account; users, admins, deactivated technicians and unknown ids are rejected. Only `open` or `assigned` tickets can be (re)assigned. Assigning sets `assigned_to`, `assigned_by` (the acting admin), `assigned_at` and status `assigned`.
+- **Status changes**: the admin picks the next status from those `TicketStatus` allows (`assigned -> in_progress -> resolved -> closed`). Anything else, including stale forms, gets "A ticket cannot move from X to Y." Moving to `in_progress`, `resolved` or `closed` stamps `started_at`, `resolved_at` or `closed_at`.
+- **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
+- **Consistency**: `App\Services\TicketService::assign()` and `changeStatus()` update the ticket and write the history row in one database transaction, with the ticket row locked, so checks use the current state and a failed history write rolls back the change.
 - **Categories**: `CategorySeeder` adds Hardware, Software, Network, Email, Printer and Account/Access. It runs in every environment (including production) and is safe to re-run: `php artisan db:seed --class=CategorySeeder`.
-- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 open tickets for `test@example.com`.
+- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com` and in progress, one assigned, three open.
 
 ## Tests
 

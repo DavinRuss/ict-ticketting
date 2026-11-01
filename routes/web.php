@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
@@ -21,6 +22,11 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('users', UserController::class)->except(['show', 'destroy']);
+
+    Route::get('tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
+    Route::get('tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
+    Route::put('tickets/{ticket}/assignment', [AdminTicketController::class, 'assign'])->name('tickets.assign');
+    Route::put('tickets/{ticket}/status', [AdminTicketController::class, 'updateStatus'])->name('tickets.status');
 });
 
 Route::middleware(['auth', 'role:technician'])->prefix('technician')->name('technician.')->group(function () {
