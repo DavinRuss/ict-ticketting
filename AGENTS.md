@@ -14,6 +14,7 @@
 - Do not fake completion. Run the checks relevant to the current phase, report the exact results, and disclose anything not verified.
 - Do not commit secrets or real user data. Use environment variables for credentials and safe sample data for local development.
 - Update documentation when behavior changes. Keep setup instructions, environment-variable examples, and role or workflow descriptions aligned with the implementation.
+- Always update both the local and GitHub repo. After every push or merge on GitHub, update the local copy at `C:\Users\HP\Desktop\Tickets\ict-ticketting` (fetch and pull, without overwriting uncommitted local work) so it matches GitHub.
 
 # Product brief
 
