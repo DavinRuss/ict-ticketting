@@ -329,8 +329,8 @@ class TicketManagementTest extends TestCase
             [TicketStatus::Resolved, TicketStatus::InProgress, 'A ticket cannot move from Resolved to In progress.'],
             [TicketStatus::Closed, TicketStatus::Open, 'A ticket cannot move from Closed to Open.'],
             [TicketStatus::Closed, TicketStatus::Closed, 'A ticket cannot move from Closed to Closed.'],
-            [TicketStatus::Open, TicketStatus::Assigned, 'Use the assignment form to assign or reassign a technician.'],
-            [TicketStatus::Assigned, TicketStatus::Assigned, 'Use the assignment form to assign or reassign a technician.'],
+            [TicketStatus::Open, TicketStatus::Assigned, 'Only an admin can assign or reassign a technician, using the assignment form.'],
+            [TicketStatus::Assigned, TicketStatus::Assigned, 'Only an admin can assign or reassign a technician, using the assignment form.'],
         ];
 
         foreach ($cases as [$from, $to, $message]) {

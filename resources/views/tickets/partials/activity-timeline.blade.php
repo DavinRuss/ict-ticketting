@@ -5,6 +5,9 @@
             <li class="text-sm">
                 <p class="text-gray-900">
                     {{ $activity->description() }}
+                    @if ($activity->isInternal())
+                        <span class="ms-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{{ __('Internal') }}</span>
+                    @endif
                     @if ($activity->to_status && $activity->action !== App\Models\TicketActivity::ACTION_STATUS_CHANGED)
                         · @include('tickets.partials.status-badge', ['status' => $activity->to_status])
                     @endif
