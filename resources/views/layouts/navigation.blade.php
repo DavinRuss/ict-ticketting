@@ -23,6 +23,11 @@
                             {{ __('Technician') }}
                         </x-nav-link>
                     @endif
+                    @can('manage', App\Models\Ticket::class)
+                        <x-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
+                            {{ __('All tickets') }}
+                        </x-nav-link>
+                    @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             {{ __('Accounts') }}
@@ -91,6 +96,11 @@
                     {{ __('Technician') }}
                 </x-responsive-nav-link>
             @endif
+            @can('manage', App\Models\Ticket::class)
+                <x-responsive-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
+                    {{ __('All tickets') }}
+                </x-responsive-nav-link>
+            @endcan
             @can('viewAny', App\Models\User::class)
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     {{ __('Accounts') }}
