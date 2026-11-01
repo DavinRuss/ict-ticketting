@@ -34,10 +34,11 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
 
    Then set `DB_PASSWORD` (and anything else in the table below) in `.env`. On WAMP, MariaDB listens on port 3307, so also set `DB_PORT=3307` (port 3306 there is usually MySQL). Tables are always created as InnoDB (`config/database.php`, override with `DB_ENGINE`), because WAMP's MariaDB defaults to MyISAM, which has no foreign keys or transactions and fails on long indexes ("Specified key was too long").
 
-3. Create the tables and the first administrator. The command asks for the password, so it never appears in your shell history:
+3. Create the tables, the ticket categories (users can't submit tickets until at least one exists) and the first administrator. The admin command asks for the password, so it never appears in your shell history:
 
    ```sh
    php artisan migrate
+   php artisan db:seed --class=CategorySeeder --force
    php artisan app:create-admin admin@yourcompany.com --name="IT Admin"
    ```
 
