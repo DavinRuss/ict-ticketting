@@ -9,6 +9,11 @@ function setTheme(theme, persist = false) {
 
 	document.documentElement.dataset.theme = selectedTheme;
 	document.documentElement.classList.toggle('dark', selectedTheme === 'dark');
+	const favicon = document.getElementById('app-favicon');
+
+	if (favicon) {
+		favicon.href = selectedTheme === 'dark' ? favicon.dataset.darkHref : favicon.dataset.lightHref;
+	}
 
 	if (persist) {
 		try {

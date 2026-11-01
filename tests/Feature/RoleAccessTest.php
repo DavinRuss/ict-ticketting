@@ -195,12 +195,29 @@ class RoleAccessTest extends TestCase
 
     public function test_theme_toggle_is_available_on_guest_and_authenticated_pages(): void
     {
-        $this->get('/login')->assertOk()->assertSee('data-theme-toggle', false);
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Rivers State Internal Revenue Service')
+            ->assertSee('rirs_logo_enhanced.png')
+            ->assertSee('rirs_logo_transparent.png')
+            ->assertSee('<title>IT Helpdesk</title>', false)
+            ->assertDontSee('viewBox="0 0 316 316"', false)
+            ->assertDontSee('Laravel Logo');
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('data-theme-toggle', false)
+            ->assertSee('rirs_logo_enhanced.png')
+            ->assertSee('rirs_logo_transparent.png')
+            ->assertDontSee('viewBox="0 0 316 316"', false);
 
         $this->actingAs(User::factory()->create())
             ->get('/dashboard')
             ->assertOk()
-            ->assertSee('data-theme-toggle', false);
+            ->assertSee('data-theme-toggle', false)
+            ->assertSee('rirs_logo_enhanced.png')
+            ->assertSee('rirs_logo_transparent.png')
+            ->assertDontSee('viewBox="0 0 316 316"', false);
     }
 
     public function test_users_cannot_change_their_own_role_through_the_profile_form(): void
