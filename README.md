@@ -112,6 +112,7 @@ There's no delete. Deactivate accounts instead.
 ## Dashboard
 
 - **Admins** see global pending (`open` + `assigned`), in-progress, and finished (`resolved` + `closed`) totals, a 14-day opened/started/resolved/closed trend, ticket volume by service category, technician workload, and recent service activity. The technician filter scopes the metrics and activity to one active technician.
+- **Activity reports** (`/admin/reports`) let admins filter the audit log by date range, ticket reference, activity type, and technician, then export selected rows, the filtered result set, or the full activity log as CSV.
 - **Technicians** see only tickets currently assigned to them; their daily progress counts only status changes they performed.
 - **Requesters** see only their own ticket totals and recent tickets. They never receive other users' or technicians' dashboard data.
 

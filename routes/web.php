@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityReportController;
 use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController;
@@ -37,6 +38,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('tickets/{ticket}/status', [AdminTicketController::class, 'updateStatus'])->name('tickets.status');
 
     Route::get('reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::get('reports', [ActivityReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/export', [ActivityReportController::class, 'export'])->name('reports.export');
+    Route::post('reports/export-selected', [ActivityReportController::class, 'exportSelected'])->name('reports.export-selected');
 });
 
 Route::middleware(['auth', 'role:technician'])->prefix('technician')->name('technician.')->group(function () {
