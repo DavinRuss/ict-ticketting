@@ -5,8 +5,8 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+                    <a href="{{ route('dashboard') }}" aria-label="{{ __('Dashboard') }}" class="block w-36 max-w-[36vw]">
+                        <x-application-logo />
                     </a>
                 </div>
 
@@ -16,7 +16,7 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                        {{ __('My tickets') }}
+                        {{ Auth::user()->isAdmin() ? __('Tickets') : __('My tickets') }}
                     </x-nav-link>
                     @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                         <x-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
@@ -30,6 +30,9 @@
                         <x-nav-link :href="route('admin.reviews.index')" :active="request()->routeIs('admin.reviews.*')">
                             {{ __('Feedback') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
                     @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
@@ -41,6 +44,7 @@
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
+                <x-theme-toggle />
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -75,6 +79,7 @@
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center sm:hidden">
+                <x-theme-toggle />
                 <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -92,7 +97,7 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                {{ __('My tickets') }}
+                {{ Auth::user()->isAdmin() ? __('Tickets') : __('My tickets') }}
             </x-responsive-nav-link>
             @if (Auth::user()->hasRole(App\Enums\UserRole::Technician))
                 <x-responsive-nav-link :href="route('technician.dashboard')" :active="request()->routeIs('technician.*')">
@@ -105,6 +110,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.reviews.index')" :active="request()->routeIs('admin.reviews.*')">
                     {{ __('Feedback') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                    {{ __('Reports') }}
                 </x-responsive-nav-link>
             @endcan
             @can('viewAny', App\Models\User::class)

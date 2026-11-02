@@ -1,15 +1,15 @@
 # IT Helpdesk
 
-IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, admin ticket management (assignment and status changes), and the technician workspace (assigned tickets, work notes, starting and resolving work).
+IT service ticketing app built with Laravel. It includes account access, role-based workspaces, ticket submission and tracking, requester comments and satisfaction reviews, admin assignment and feedback views, and technician work notes and status changes.
 
 ## Requirements
 
 - PHP 8.3+ with the `pdo_mysql`, `mbstring`, `xml`, `curl`, `zip`, `bcmath` and `intl` extensions
 - Composer 2
-- MariaDB 10.6+ (WAMP ships MariaDB 11.4)
+- MySQL 8.0+ (`pdo_mysql`); MariaDB 10.6+ is also supported
 - Node.js 20+ and npm (to build the Tailwind CSS and JS assets)
 
-Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node 22.
+Verified with Laravel 13.39, PHP 8.5.12, Composer 2 and Node 22. SQLite is used for the automated test suite; production setup targets MySQL 8.0+.
 
 ## Initial setup
 
@@ -17,8 +17,8 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
 
    ```sql
    CREATE DATABASE tickets_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'it_helpdesk'@'localhost' IDENTIFIED BY 'choose-a-strong-password';
-   GRANT ALL PRIVILEGES ON tickets_db.* TO 'it_helpdesk'@'localhost';
+   CREATE USER 'it_helpdesk'@'127.0.0.1' IDENTIFIED BY 'choose-a-strong-password';
+   GRANT ALL PRIVILEGES ON tickets_db.* TO 'it_helpdesk'@'127.0.0.1';
    FLUSH PRIVILEGES;
    ```
 
@@ -32,19 +32,19 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
    php artisan key:generate
    ```
 
-   Then set `DB_PASSWORD` (and anything else in the table below) in `.env`. On WAMP, MariaDB listens on port 3307, so also set `DB_PORT=3307` (port 3306 there is usually MySQL). Tables are always created as InnoDB (`config/database.php`, override with `DB_ENGINE`), because WAMP's MariaDB defaults to MyISAM, which has no foreign keys or transactions and fails on long indexes ("Specified key was too long").
+   Set `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in `.env`. MySQL defaults to port 3306. Keep `.env` private and set `APP_DEBUG=false` in production. Tables use InnoDB for foreign keys and transactions.
 
 3. Create the tables, the ticket categories (users can't submit tickets until at least one exists) and the first administrator. The admin command asks for the password, so it never appears in your shell history:
 
    ```sh
-   php artisan migrate
+   php artisan migrate --force
    php artisan db:seed --class=CategorySeeder --force
    php artisan app:create-admin admin@yourcompany.com --name="IT Admin"
    ```
 
    If the account already exists, promote it instead (asks for confirmation): `php artisan app:promote-admin someone@yourcompany.com`.
 
-4. Start the app with `php artisan serve` and open http://localhost:8000.
+4. Start the app with `php artisan serve` and open http://localhost:8000. During frontend development, run `npm run dev` in a second terminal; `npm run build` creates production assets.
 
 `php artisan db:seed` adds three local sample accounts, all with the password `password`: `admin@example.com` (admin), `tech@example.com` (technician) and `test@example.com` (user). Use them for local development only. The seeder skips them when `APP_ENV=production`.
 
@@ -59,8 +59,8 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
 | `APP_KEY` | generated | Set by `php artisan key:generate`. Keep it secret. |
 | `APP_DEBUG` | `true` locally, `false` in production | Must be `false` in production so stack traces are never shown. |
 | `APP_URL` | `http://localhost:8000` | Used to build password-reset links. |
-| `DB_CONNECTION` | `mariadb` | Laravel's MariaDB driver (uses `pdo_mysql`). |
-| `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | WAMP's MariaDB listens on `3307`. |
+| `DB_CONNECTION` | `mysql` | Use MySQL 8; `mariadb` is supported for MariaDB installations. |
+| `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | Use the port configured by your database server. |
 | `DB_DATABASE` | `tickets_db` | |
 | `DB_USERNAME` | `it_helpdesk` | |
 | `DB_PASSWORD` | *(your password)* | Required. Left empty in `.env.example` on purpose. |
@@ -69,6 +69,10 @@ Tested with Laravel 13.39, PHP 8.3.36, MariaDB 10.6.23, Composer 2.11.1 and Node
 | `SESSION_SECURE_COOKIE` | `true` in production | Send the session cookie over HTTPS only. |
 | `MAIL_MAILER` | `log` | In development, emails (including reset links) are written to `storage/logs/laravel.log`. Use a real SMTP mailer in production. |
 | `MAIL_FROM_ADDRESS` | `helpdesk@yourcompany.com` | Sender address for password-reset emails. |
+
+## Appearance
+
+Use the sun/moon control in the navigation or login screen to switch between light and dark themes. The selection is saved in the current browser and applies across the app.
 
 ## Account access
 
@@ -92,7 +96,7 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | Area | User | Technician | Admin |
 | --- | --- | --- | --- |
 | Dashboard, Profile, password change | yes | yes | yes |
-| My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
+| Tickets (`/tickets`): submit and open own tickets; admin list shows all requests and supports quick assignment | yes | yes | yes |
 | Technician workspace (`/technician`): **own assigned** tickets, work notes, start and resolve work | no | yes | no |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
 | All tickets (`/admin/tickets`): list and filter every ticket, assign/reassign technicians, change status | no | no | yes |
@@ -105,11 +109,19 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 
 There's no delete. Deactivate accounts instead.
 
+## Dashboard
+
+- **Admins** see global pending (`open` + `assigned`), in-progress, and finished (`resolved` + `closed`) totals, a 14-day opened/started/resolved/closed trend, ticket volume by service category, technician workload, and recent service activity. The technician filter scopes the metrics and activity to one active technician.
+- **Activity reports** (`/admin/reports`) let admins filter the audit log by date range, ticket reference, activity type, and technician, then export selected rows, the filtered result set, or the full activity log as CSV.
+- **Technicians** see only tickets currently assigned to them; their daily progress counts only status changes they performed.
+- **Requesters** see only their own ticket totals and recent tickets. They never receive other users' or technicians' dashboard data.
+
 ## Tickets
 
 - **Submitting**: any signed-in user opens **New ticket** and enters a title, description, category (active categories only) and priority (`low`, `medium`, `high`, `urgent`). The ticket always starts as `open`, unassigned, owned by the person who submitted it. Status, owner, technician and reference sent by the browser are ignored.
 - **Reference**: each ticket gets `TKT-000123`, built from its database id right after insert, so references never collide.
 - **History**: every ticket keeps an append-only log in `ticket_activities`. Submitting writes a `created` entry; the ticket page lists these under *Updates*.
+- **Comments**: the requester can add public comments to their own ticket. The requester, admins, and currently assigned technician can read them; technician work notes remain separate and private from the requester.
 - **Privacy**: `App\Policies\TicketPolicy` lets users open only their own tickets. Opening someone else's ticket by changing the URL gives a 403. The list and the dashboard counts are always scoped to the signed-in user.
 - **Status workflow**: `App\Enums\TicketStatus` is the single place that defines the allowed transitions (`open -> assigned -> in_progress -> resolved -> closed`; reassigning keeps a ticket `assigned`). Users can't change status, except closing their own resolved ticket (below).
 
@@ -130,7 +142,7 @@ There's no delete. Deactivate accounts instead.
 
 ### Admin ticket management (`/admin/tickets`, "All tickets" in the nav)
 
-- **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned").
+- **List**: every ticket, 15 per page, filterable by status, priority, category and technician (including "Not assigned"). Admins can also assign or reassign directly from `/tickets`.
 - **Assign / reassign**: only to an **active technician** account; users, admins, deactivated technicians and unknown ids are rejected. Only `open` or `assigned` tickets can be (re)assigned. Assigning sets `assigned_to`, `assigned_by` (the acting admin), `assigned_at` and status `assigned`.
 - **Status changes**: the admin picks the next status from those `TicketStatus::transitionsFor(UserRole::Admin)` allows (`assigned -> in_progress -> resolved -> closed`). Anything else, including stale forms, gets "A ticket cannot move from X to Y." Moving to `in_progress`, `resolved` or `closed` stamps `started_at`, `resolved_at` or `closed_at`.
 - **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
@@ -150,3 +162,10 @@ To run the tests against MariaDB, create an empty `tickets_db_test` database and
 ```sh
 DB_CONNECTION=mariadb DB_DATABASE=tickets_db_test php artisan test
 ```
+
+## Manual acceptance checklist
+
+- **User/requester**: log in, submit a ticket, confirm it appears only in your ticket list, add a comment, and verify another user's ticket URL returns 403. On a resolved ticket, submit a 1–5-star review and confirm the requester can see and edit it; try an unresolved ticket and verify review submission is rejected. Confirm the fix to close a resolved ticket.
+- **Technician**: open the technician workspace, verify only currently assigned tickets appear, start and resolve a ticket, add an internal work note, and view requester comments. Verify a reassigned ticket returns 403 and that the requester cannot see the internal note.
+- **Admin**: create or promote an account with the appropriate admin command, open all tickets, assign and reassign an active technician, advance status through the allowed workflow, and verify history. Open Feedback to see reviews, filter and paginate results, and open the review from its ticket. Verify only admins can manage accounts and view feedback.
+- **Guest and responsive navigation**: verify protected routes redirect guests to login, public registration is unavailable, and role-appropriate navigation works at desktop and mobile widths without showing inaccessible admin or technician links.

@@ -34,7 +34,9 @@
                     @endif
                 </div>
 
-                @include('tickets.partials.activity-timeline', ['activities' => $ticket->activities])
+                @include('tickets.partials.comments', ['ticket' => $ticket, 'allowCommentForm' => false])
+
+                @include('tickets.partials.activity-timeline', ['activities' => $activities])
             </div>
 
             <div class="space-y-6">

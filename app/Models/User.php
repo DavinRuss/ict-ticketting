@@ -77,4 +77,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Review::class);
     }
+
+    public function ticketComments(): HasMany
+    {
+        return $this->hasMany(TicketComment::class);
+    }
 }

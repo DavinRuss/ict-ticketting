@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityReportController;
 use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController;
@@ -21,7 +22,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store', 'show']);
+    Route::put('tickets/{ticket}/assignment', [TicketController::class, 'assign'])->name('tickets.assign');
     Route::put('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
+    Route::post('tickets/{ticket}/comments', [TicketController::class, 'storeComment'])->name('tickets.comments.store');
     Route::post('tickets/{ticket}/review', [ReviewController::class, 'store'])->name('tickets.review.store');
     Route::put('tickets/{ticket}/review', [ReviewController::class, 'update'])->name('tickets.review.update');
 });
@@ -35,6 +38,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('tickets/{ticket}/status', [AdminTicketController::class, 'updateStatus'])->name('tickets.status');
 
     Route::get('reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::get('reports', [ActivityReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/export', [ActivityReportController::class, 'export'])->name('reports.export');
+    Route::post('reports/export-selected', [ActivityReportController::class, 'exportSelected'])->name('reports.export-selected');
 });
 
 Route::middleware(['auth', 'role:technician'])->prefix('technician')->name('technician.')->group(function () {
