@@ -172,11 +172,12 @@ class TicketService
     /**
      * Post a comment to the ticket's conversation and notify everyone else on it.
      * Access is re-checked under the row lock, since the ticket may have been
-     * reassigned after the page loaded.
+     * reassigned after the page loaded. The comment and its notifications are
+     * saved together, so a failed post can be retried without duplicating it.
      */
     public function addComment(Ticket $ticket, User $author, string $body): TicketComment
     {
-        $comment = DB::transaction(function () use ($ticket, $author, $body) {
+        return DB::transaction(function () use ($ticket, $author, $body) {
             $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
 
             if ($author->cannot('comment', $ticket)) {
@@ -192,12 +193,10 @@ class TicketService
             $comment->user()->associate($author);
             $comment->save();
 
+            Notification::send($this->commentRecipients($ticket, $author), new TicketCommentPosted($comment));
+
             return $comment;
         });
-
-        Notification::send($this->commentRecipients($comment->ticket, $author), new TicketCommentPosted($comment));
-
-        return $comment;
     }
 
     /**

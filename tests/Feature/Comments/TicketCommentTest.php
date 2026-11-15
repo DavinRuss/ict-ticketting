@@ -174,6 +174,21 @@ class TicketCommentTest extends TestCase
         Notification::assertNotSentTo($this->technician, TicketCommentPosted::class);
     }
 
+    public function test_comment_is_rolled_back_when_notifying_fails(): void
+    {
+        Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('Notification store unavailable'));
+
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->comment($this->requester);
+            $this->fail('Expected the post to fail.');
+        } catch (\RuntimeException) {
+        }
+
+        $this->assertDatabaseCount('ticket_comments', 0);
+    }
+
     public function test_stored_notification_links_each_recipient_to_their_own_page(): void
     {
         $this->comment($this->requester, 'The screen flickers when I open Outlook');
