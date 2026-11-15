@@ -75,9 +75,16 @@ export function startDesktopNotifications() {
                 credentials: 'same-origin',
             });
 
-            // Signed out or deactivated: stop polling until the next page load.
-            if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+            // Signed out or deactivated (401/403/419, or redirected to the login page):
+            // stop polling until the next page load. Other errors are retried next time.
+            const signedOut = [401, 403, 419].includes(response.status) || response.redirected;
+
+            if (signedOut) {
                 clearInterval(timer);
+                return;
+            }
+
+            if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
                 return;
             }
 
