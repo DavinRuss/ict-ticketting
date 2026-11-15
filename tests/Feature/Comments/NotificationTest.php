@@ -3,6 +3,7 @@
 namespace Tests\Feature\Comments;
 
 use App\Enums\TicketStatus;
+use App\Enums\UserRole;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\TicketService;
@@ -90,6 +91,51 @@ class NotificationTest extends TestCase
             ->assertRedirect(route('technician.tickets.show', $this->ticket).'#comments');
 
         $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_opening_sends_each_role_to_its_own_ticket_page(): void
+    {
+        $this->postComment($this->technician);
+
+        $this->actingAs($this->admin)->get(route('notifications.open', $this->admin->notifications()->sole()->id))
+            ->assertRedirect(route('admin.tickets.show', $this->ticket).'#comments');
+        $this->actingAs($this->requester)->get(route('notifications.open', $this->requester->notifications()->sole()->id))
+            ->assertRedirect(route('tickets.show', $this->ticket).'#comments');
+    }
+
+    public function test_link_follows_the_users_current_role(): void
+    {
+        $ownTicket = Ticket::factory()->create(['user_id' => $this->admin->id]);
+        $this->postComment($this->technician);
+        $this->postComment(User::factory()->admin()->create(), 'About your own ticket', $ownTicket);
+        $this->admin->forceFill(['role' => UserRole::User])->save();
+
+        $own = $this->admin->notifications()->get()->firstWhere('data.ticket_id', $ownTicket->id);
+        $this->actingAs($this->admin)->get(route('notifications.open', $own->id))
+            ->assertRedirect(route('tickets.show', $ownTicket).'#comments');
+
+        $other = $this->admin->notifications()->get()->firstWhere('data.ticket_id', $this->ticket->id);
+        $this->get(route('notifications.open', $other->id))
+            ->assertRedirect(route('notifications.index'))
+            ->assertSessionHas('error');
+    }
+
+    public function test_previous_technician_no_longer_sees_previews_after_reassignment(): void
+    {
+        $this->postComment($this->requester, 'Private detail');
+        $this->ticket->forceFill(['assigned_to' => User::factory()->technician()->create()->id])->save();
+
+        $this->actingAs($this->technician)->getJson(route('notifications.feed'))
+            ->assertJsonPath('unread_count', 0)
+            ->assertJsonCount(0, 'notifications');
+
+        $this->get(route('notifications.index'))
+            ->assertOk()
+            ->assertDontSee('Private detail')
+            ->assertSee('You no longer have access to this ticket.');
+
+        $this->get(route('notifications.open', $this->technician->notifications()->sole()->id))
+            ->assertRedirect(route('notifications.index'));
     }
 
     public function test_users_cannot_open_someone_elses_notification(): void

@@ -13,6 +13,10 @@
 
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-4">
+            @if (session('error'))
+                <div class="rounded-md bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
+            @endif
+
             <p class="text-sm text-gray-600" data-notification-permission-hint>{{ __('Desktop notifications appear while this app is open in a browser tab. Allow them when your browser asks.') }}</p>
 
             <div class="bg-white shadow-sm sm:rounded-lg">
@@ -29,7 +33,11 @@
                                             <span class="ms-1 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">{{ __('New') }}</span>
                                         @endunless
                                     </p>
-                                    <p class="mt-1 text-sm text-gray-600">{{ $notification->data['body'] ?? '' }}</p>
+                                    @if (in_array($notification->data['ticket_id'] ?? null, $accessibleTicketIds, true))
+                                        <p class="mt-1 text-sm text-gray-600">{{ $notification->data['body'] ?? '' }}</p>
+                                    @else
+                                        <p class="mt-1 text-sm italic text-gray-500">{{ __('You no longer have access to this ticket.') }}</p>
+                                    @endif
                                     <p class="mt-1 text-xs text-gray-500">{{ $notification->created_at->format('d M Y, H:i') }}</p>
                                 </a>
                             </li>

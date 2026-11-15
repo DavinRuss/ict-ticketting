@@ -35,7 +35,6 @@ class TicketCommentPosted extends Notification
             'comment_id' => $this->comment->id,
             'title' => __('New comment on :reference', ['reference' => $ticket->reference]),
             'body' => __(':name: :comment', ['name' => $this->comment->user->name, 'comment' => Str::limit($this->comment->body, 120)]),
-            'url' => $ticket->urlFor($notifiable).'#comments',
         ];
     }
 }

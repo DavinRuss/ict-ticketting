@@ -189,7 +189,7 @@ class TicketCommentTest extends TestCase
         $this->assertDatabaseCount('ticket_comments', 0);
     }
 
-    public function test_stored_notification_links_each_recipient_to_their_own_page(): void
+    public function test_stored_notification_has_the_ticket_and_a_preview(): void
     {
         $this->comment($this->requester, 'The screen flickers when I open Outlook');
 
@@ -197,8 +197,5 @@ class TicketCommentTest extends TestCase
         $this->assertSame($this->ticket->id, $data['ticket_id']);
         $this->assertSame('New comment on '.$this->ticket->reference, $data['title']);
         $this->assertSame('Uma User: The screen flickers when I open Outlook', $data['body']);
-        $this->assertSame(route('technician.tickets.show', $this->ticket).'#comments', $data['url']);
-
-        $this->assertSame(route('admin.tickets.show', $this->ticket).'#comments', $this->admin->notifications()->sole()->data['url']);
     }
 }
