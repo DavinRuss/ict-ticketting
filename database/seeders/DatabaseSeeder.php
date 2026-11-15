@@ -66,6 +66,8 @@ class DatabaseSeeder extends Seeder
         $tickets->assign($created[0], $technician, $admin);
         $tickets->changeStatus($created[0], TicketStatus::InProgress, $technician);
         $tickets->addWorkNote($created[0], $technician, 'Checked the charger and battery health; ordering a replacement battery.');
+        $tickets->addComment($created[0], $technician, 'A replacement battery is on order. Can you drop the laptop at the IT desk tomorrow morning?');
+        $tickets->addComment($created[0], $user, 'Sure, I will bring it in at 9.');
         $tickets->assign($created[1], $technician, $admin);
         $tickets->assign($created[2], $technician, $admin);
         $tickets->changeStatus($created[2], TicketStatus::InProgress, $technician);

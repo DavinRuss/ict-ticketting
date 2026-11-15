@@ -57,11 +57,13 @@ class TicketController extends Controller
             ->with('success', __('Ticket :reference submitted.', ['reference' => $ticket->reference]));
     }
 
-    public function show(Ticket $ticket): View
+    public function show(Request $request, Ticket $ticket): View
     {
         Gate::authorize('view', $ticket);
 
-        $ticket->load(['category', 'technician', 'review', 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
+        $request->user()->markTicketNotificationsRead($ticket);
+
+        $ticket->load(['category', 'technician', 'review', 'comments' => fn ($query) => $query->with('user')->oldest()->oldest('id'), 'activities' => fn ($query) => $query->visibleToRequester()->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id')]);
 
         return view('tickets.show', ['ticket' => $ticket]);
     }

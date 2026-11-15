@@ -4,9 +4,11 @@ use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\Technician\TicketController as TechnicianTicketController;
+use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +26,12 @@ Route::middleware('auth')->group(function () {
     Route::put('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
     Route::post('tickets/{ticket}/review', [ReviewController::class, 'store'])->name('tickets.review.store');
     Route::put('tickets/{ticket}/review', [ReviewController::class, 'update'])->name('tickets.review.update');
+    Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store'])->name('tickets.comments.store');
+
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+    Route::post('notifications/read', [NotificationController::class, 'markAllRead'])->name('notifications.read');
+    Route::get('notifications/{notification}', [NotificationController::class, 'open'])->name('notifications.open');
 });
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {

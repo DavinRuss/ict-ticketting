@@ -64,6 +64,14 @@ class TicketPolicy
     }
 
     /**
+     * The ticket conversation: its requester, the technician it is assigned to now, and admins.
+     */
+    public function comment(User $actor, Ticket $ticket): bool
+    {
+        return $actor->isAdmin() || $this->view($actor, $ticket) || $this->work($actor, $ticket);
+    }
+
+    /**
      * Which statuses each role may set is decided by TicketStatus::transitionsFor().
      */
     public function changeStatus(User $actor, Ticket $ticket): bool

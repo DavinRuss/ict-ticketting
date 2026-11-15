@@ -77,4 +77,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Review::class);
     }
+
+    /**
+     * Opening a ticket counts as reading its notifications.
+     */
+    public function markTicketNotificationsRead(Ticket $ticket): void
+    {
+        $this->unreadNotifications()->where('data->ticket_id', $ticket->id)->update(['read_at' => now()]);
+    }
 }

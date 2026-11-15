@@ -1,6 +1,6 @@
 # IT Helpdesk
 
-IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, admin ticket management (assignment and status changes), and the technician workspace (assigned tickets, work notes, starting and resolving work).
+IT service ticketing app built with Laravel. Built so far: account access (login, logout, forgot/reset password, password change), roles, admin account management, ticket submission with a user dashboard, admin ticket management (assignment and status changes), the technician workspace (assigned tickets, work notes, starting and resolving work), satisfaction reviews, and ticket comments with in-app and desktop notifications.
 
 ## Requirements
 
@@ -94,6 +94,8 @@ Each account has one role, stored in `users.role`: `user` (default), `technician
 | Dashboard, Profile, password change | yes | yes | yes |
 | My tickets (`/tickets`): submit, list and open **own** tickets | yes | yes | yes |
 | Technician workspace (`/technician`): **own assigned** tickets, work notes, start and resolve work | no | yes | no |
+| Comments on a ticket's conversation: own tickets (user), currently assigned tickets (technician), any ticket (admin) | yes | yes | yes |
+| Notifications (`/notifications`): own notifications only | yes | yes | yes |
 | Accounts (`/admin/users`): list, search, create, edit, change role, deactivate | no | no | yes |
 | All tickets (`/admin/tickets`): list and filter every ticket, assign/reassign technicians, change status | no | no | yes |
 
@@ -121,6 +123,13 @@ There's no delete. Deactivate accounts instead.
 - **Work notes**: internal notes recorded as `ticket_activities` rows (`action = work_note`) with author and time. They show to the technician and admins with an "Internal" badge and are **hidden from the requester**. Notes typed with a status change are shown to the requester. Closed tickets take no new notes.
 - **Resolution choice**: technicians mark work **Resolved directly**. There's no separate "awaiting confirmation" status. The requester's confirmation is closing the resolved ticket (or an admin closes it), which keeps the agreed `open -> assigned -> in_progress -> resolved -> closed` lifecycle unchanged.
 
+### Comments and notifications
+
+- **Conversation**: each ticket page (requester, technician workspace and admin) has a **Comments** thread stored in `ticket_comments`. Comments are visible to the ticket's requester, the technician it is assigned to now, and admins; work notes stay internal. `TicketPolicy::comment()` decides who may post, and `TicketService::addComment()` re-checks it under a row lock. Closed tickets take no new comments. The ticket and author always come from the route and the signed-in user.
+- **Who is notified**: when someone posts, every **active** person on the ticket except the author gets a `TicketCommentPosted` notification: the requester, the assigned technician (if any) and all admins. Notifications are stored in Laravel's `notifications` table.
+- **In-app**: the bell in the nav shows the unread count and opens `/notifications`. Opening a notification, opening the ticket, or **Mark all as read** marks them read.
+- **Desktop (taskbar) notifications**: open tabs poll `GET /notifications/feed` every 15 seconds (`resources/js/desktop-notifications.js`). After the user clicks **Enable desktop notifications** and allows them in the browser, new comments appear as native OS notifications; clicking one opens the ticket. Limitations: they only appear while the app is open in a browser tab (it can be minimised or in the background), and browsers only allow them on `https://` or `http://localhost`. Over plain HTTP on a LAN IP (e.g. `http://192.168.x.x`) only the in-app bell works.
+
 ### Closing and satisfaction reviews
 
 - **Confirming the fix**: on a `resolved` ticket the requester sees **Confirm fix and close** (`PUT /tickets/{ticket}/close`, `TicketPolicy::close()`: owner only). It goes through `TicketService::changeStatus()` using `TicketStatus::transitionsFor(UserRole::User)` (`resolved -> closed` only). It stamps `closed_at` and logs a `status_changed` row by the requester. Admins can also close from their status form.
@@ -136,9 +145,11 @@ There's no delete. Deactivate accounts instead.
 - **History**: each assignment, reassignment and status change appends a `ticket_activities` row with the acting user, time, from/to status, from/to technician (`from_technician_id`, `to_technician_id`) and an optional note. Notes are shown to the requester on their ticket page.
 - **Consistency**: `App\Services\TicketService::assign()` and `changeStatus()` update the ticket and write the history row in one database transaction, with the ticket row locked, so checks use the current state and a failed history write rolls back the change.
 - **Categories**: `CategorySeeder` adds Hardware, Software, Network, Email, Printer and Account/Access. It runs in every environment (including production) and is safe to re-run: `php artisan db:seed --class=CategorySeeder`.
-- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com`, in progress and with a work note, one assigned, one resolved by the technician with a 5-star review, and two open.
+- **Sample data**: outside production, `php artisan migrate:fresh --seed` also adds 5 tickets for `test@example.com`: one assigned to `tech@example.com`, in progress, with a work note and two comments, one assigned, one resolved by the technician with a 5-star review, and two open.
 
 ## Tests
+
+Build the frontend first (`npm run build`); tests that render pages fail with "Vite manifest not found" without it.
 
 ```sh
 php artisan test           # uses in-memory SQLite (phpunit.xml)

@@ -77,12 +77,15 @@ class TicketController extends Controller
         ]);
     }
 
-    public function show(Ticket $ticket): View
+    public function show(Request $request, Ticket $ticket): View
     {
         Gate::authorize('work', $ticket);
 
+        $request->user()->markTicketNotificationsRead($ticket);
+
         $ticket->load([
             'requester', 'category', 'assigner',
+            'comments' => fn ($query) => $query->with('user')->oldest()->oldest('id'),
             'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id'),
         ]);
 

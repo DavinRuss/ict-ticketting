@@ -18,6 +18,8 @@
 
                 @include('tickets.partials.requester-review', ['ticket' => $ticket])
 
+                @include('tickets.partials.comments', ['ticket' => $ticket])
+
                 @include('tickets.partials.activity-timeline', ['activities' => $ticket->activities])
             </div>
 
