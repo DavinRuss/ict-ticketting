@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Enums\UserRole;
 use Database\Factories\TicketFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -80,5 +81,22 @@ class Ticket extends Model
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TicketComment::class);
+    }
+
+    /**
+     * The page this user works on the ticket from: admin, technician workspace or requester view.
+     */
+    public function urlFor(User $user): string
+    {
+        return match (true) {
+            $user->isAdmin() => route('admin.tickets.show', $this),
+            $user->hasRole(UserRole::Technician) && $this->assigned_to === $user->id => route('technician.tickets.show', $this),
+            default => route('tickets.show', $this),
+        };
     }
 }

@@ -76,12 +76,15 @@ class TicketController extends Controller
             ->orWhereIn('id', Ticket::query()->select('assigned_to')->whereNotNull('assigned_to')));
     }
 
-    public function show(Ticket $ticket): View
+    public function show(Request $request, Ticket $ticket): View
     {
         Gate::authorize('manage', Ticket::class);
 
+        $request->user()->markTicketNotificationsRead($ticket);
+
         $ticket->load([
             'requester', 'category', 'technician', 'assigner', 'review',
+            'comments' => fn ($query) => $query->with('user')->oldest()->oldest('id'),
             'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id'),
         ]);
 

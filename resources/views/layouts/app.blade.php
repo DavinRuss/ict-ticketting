@@ -27,6 +27,16 @@
                 </header>
             @endisset
 
+            <div id="desktop-notifications" data-feed-url="{{ route('notifications.feed') }}" class="hidden max-w-7xl mx-auto pt-6 px-4 sm:px-6 lg:px-8">
+                <div class="rounded-md bg-indigo-50 p-4 text-sm text-indigo-800 flex flex-wrap items-center justify-between gap-3">
+                    <span>{{ __('Get a desktop notification when someone comments on your tickets.') }}</span>
+                    <span class="flex gap-4">
+                        <button type="button" data-enable-notifications class="font-medium underline hover:text-indigo-950">{{ __('Enable desktop notifications') }}</button>
+                        <button type="button" data-dismiss-notifications class="text-indigo-600 hover:text-indigo-900">{{ __('Not now') }}</button>
+                    </span>
+                </div>
+            </div>
+
             @if (session('success'))
                 <div class="max-w-7xl mx-auto pt-6 px-4 sm:px-6 lg:px-8">
                     <div class="rounded-md bg-green-50 p-4 text-sm text-green-800" role="status">

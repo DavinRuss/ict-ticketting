@@ -7,9 +7,13 @@ use App\Enums\UserRole;
 use App\Models\Review;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
+use App\Models\TicketComment;
 use App\Models\User;
+use App\Notifications\TicketCommentPosted;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class TicketService
@@ -163,6 +167,55 @@ class TicketService
                 'note' => $note,
             ]);
         });
+    }
+
+    /**
+     * Post a comment to the ticket's conversation and notify everyone else on it.
+     * Access is re-checked under the row lock, since the ticket may have been
+     * reassigned after the page loaded.
+     */
+    public function addComment(Ticket $ticket, User $author, string $body): TicketComment
+    {
+        $comment = DB::transaction(function () use ($ticket, $author, $body) {
+            $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($author->cannot('comment', $ticket)) {
+                throw $this->rejected('comment', 'body', __('You can no longer comment on this ticket.'));
+            }
+
+            if ($ticket->status === TicketStatus::Closed) {
+                throw $this->rejected('comment', 'body', __('This ticket is closed. Comments can no longer be added.'));
+            }
+
+            $comment = new TicketComment(['body' => $body]);
+            $comment->ticket()->associate($ticket);
+            $comment->user()->associate($author);
+            $comment->save();
+
+            return $comment;
+        });
+
+        Notification::send($this->commentRecipients($comment->ticket, $author), new TicketCommentPosted($comment));
+
+        return $comment;
+    }
+
+    /**
+     * Active people who can see the conversation (requester, assigned technician, admins), except the author.
+     *
+     * @return Collection<int, User>
+     */
+    private function commentRecipients(Ticket $ticket, User $author): Collection
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($author->getKey())
+            ->where(fn ($query) => $query
+                ->whereIn('id', array_filter([$ticket->user_id, $ticket->assigned_to]))
+                ->orWhere('role', UserRole::Admin->value))
+            ->get()
+            ->filter(fn (User $user) => $user->can('comment', $ticket))
+            ->values();
     }
 
     /**
