@@ -27,20 +27,29 @@ class DatabaseSeeder extends Seeder
         }
 
         // Local sample accounts only; all use the password "password".
-        $admin = User::factory()->admin()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@example.com'],
+            User::factory()->admin()->make([
+                'name' => 'Admin User',
+                'email' => 'admin@example.com',
+            ])->getAttributes()
+        );
 
-        $technician = User::factory()->technician()->create([
-            'name' => 'Tech User',
-            'email' => 'tech@example.com',
-        ]);
+        $technician = User::firstOrCreate(
+            ['email' => 'tech@example.com'],
+            User::factory()->technician()->make([
+                'name' => 'Tech User',
+                'email' => 'tech@example.com',
+            ])->getAttributes()
+        );
 
-        $user = User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $user = User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            User::factory()->make([
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+            ])->getAttributes()
+        );
 
         $categories = Category::pluck('id', 'name');
         $tickets = app(TicketService::class);

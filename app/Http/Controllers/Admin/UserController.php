@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Requests\Admin\UserIndexRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -73,6 +74,10 @@ class UserController extends Controller
                 $user->email_verified_at = null;
             }
 
+            if ($request->filled('password')) {
+                $user->password = $request->input('password');
+            }
+
             if ($request->user()->can('changeAccess', $user)) {
                 $user->role = $request->enum('role', UserRole::class);
 
@@ -88,6 +93,49 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', __('Account updated for :email.', ['email' => $user->email]));
+    }
+
+    public function deactivate(User $user): RedirectResponse
+    {
+        Gate::authorize('deactivate', $user);
+
+        $user->is_active = false;
+        $user->save();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', __(':name has been deactivated and signed out.', ['name' => $user->name]));
+    }
+
+    public function activate(User $user): RedirectResponse
+    {
+        Gate::authorize('activate', $user);
+
+        $user->is_active = true;
+        $user->save();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', __(':name has been reactivated.', ['name' => $user->name]));
+    }
+
+    public function destroy(User $user): RedirectResponse
+    {
+        Gate::authorize('delete', $user);
+
+        $name = $user->name;
+
+        try {
+            $user->delete();
+        } catch (QueryException $e) {
+            if (($e->errorInfo[0] ?? null) !== '23000') {
+                throw $e;
+            }
+
+            return redirect()->route('admin.users.index')
+                ->with('error', __(':name has ticket history and cannot be removed. Deactivate the account instead.', ['name' => $name]));
+        }
+
+        return redirect()->route('admin.users.index')
+            ->with('success', __(':name has been removed.', ['name' => $name]));
     }
 
     /**

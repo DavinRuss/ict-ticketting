@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\TicketService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -87,5 +88,17 @@ class TicketController extends Controller
             'reference' => $ticket->reference,
             'status' => strtolower($ticket->status->label()),
         ]));
+    }
+
+    public function destroy(Request $request, Ticket $ticket, TicketService $tickets): RedirectResponse
+    {
+        Gate::authorize('delete', $ticket);
+
+        $reference = $ticket->reference;
+
+        $tickets->delete($ticket, $request->user());
+
+        return redirect()->route('admin.tickets.index')
+            ->with('success', __('Ticket :reference was erased.', ['reference' => $reference]));
     }
 }

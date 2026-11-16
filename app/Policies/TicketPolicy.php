@@ -80,4 +80,13 @@ class TicketPolicy
     {
         return $actor->isAdmin() || $this->work($actor, $ticket);
     }
+
+    /**
+     * Permanently erase a ticket and its history. Admin-only; TicketService removes
+     * the dependent rows before the ticket itself.
+     */
+    public function delete(User $actor, Ticket $ticket): bool
+    {
+        return $actor->isAdmin();
+    }
 }

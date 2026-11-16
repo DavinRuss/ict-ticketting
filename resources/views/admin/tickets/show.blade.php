@@ -141,6 +141,16 @@
                         </form>
                     @endif
                 </div>
+
+                <div class="bg-white p-4 sm:p-6 shadow-sm sm:rounded-lg">
+                    <h3 class="font-medium text-red-600">{{ __('Danger zone') }}</h3>
+                    <p class="mt-2 text-sm text-gray-600">{{ __('Erasing permanently removes this ticket together with its comments, activity history and any review. This cannot be undone.') }}</p>
+                    <form method="POST" action="{{ route('admin.tickets.destroy', $ticket) }}" class="mt-4" onsubmit="return confirm('{{ __('Erase :reference permanently? This cannot be undone.', ['reference' => $ticket->reference]) }}')">
+                        @csrf
+                        @method('DELETE')
+                        <x-danger-button>{{ __('Erase ticket') }}</x-danger-button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

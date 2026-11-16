@@ -13,23 +13,67 @@
                 @if ($isAdmin)
                     <a href="{{ route('admin.tickets.index') }}" class="text-sm font-medium text-indigo-700 hover:text-indigo-900">{{ __('Open ticket queue') }}</a>
                 @endif
-                <a href="{{ route('tickets.create') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                <a href="{{ route('tickets.create') }}" class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700">
+                    <x-icon name="plus" class="h-4 w-4" />
                     {{ __('New ticket') }}
                 </a>
             </div>
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            @php($totalTickets = $statusCounts->sum())
-            @php($ticketListRoute = $isAdmin ? 'admin.tickets.index' : ($isTechnician ? 'technician.tickets.index' : 'tickets.index'))
+    <div class="px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-7xl space-y-6">
+            @php
+                $totalTickets = $statusCounts->sum();
+                $ticketListRoute = $isAdmin ? 'admin.tickets.index' : ($isTechnician ? 'technician.tickets.index' : 'tickets.index');
+
+                $donutColors = [
+                    'open' => '#f59e0b',
+                    'assigned' => '#6366f1',
+                    'in_progress' => '#8b5cf6',
+                    'resolved' => '#10b981',
+                    'closed' => '#64748b',
+                ];
+                $donutTotal = $statusCounts->sum();
+                $donutDenominator = max(1, $donutTotal);
+                $donutRadius = 42;
+                $donutCircumference = 2 * M_PI * $donutRadius;
+                $donutSegments = [];
+                $donutAccumulated = 0.0;
+                foreach ($statuses as $status) {
+                    $count = (int) $statusCounts[$status->value];
+                    if ($count <= 0) {
+                        continue;
+                    }
+                    $length = ($count / $donutDenominator) * $donutCircumference;
+                    $donutSegments[] = [
+                        'label' => $status->label(),
+                        'value' => $count,
+                        'color' => $donutColors[$status->value] ?? '#6366f1',
+                        'dasharray' => round($length, 2).' '.round($donutCircumference, 2),
+                        'dashoffset' => round(-$donutAccumulated, 2),
+                    ];
+                    $donutAccumulated += $length;
+                }
+
+                $areaSeries = $activitySeries->firstWhere('key', 'opened');
+                $areaPath = '';
+                if ($areaSeries && $areaSeries['coordinates']->isNotEmpty()) {
+                    $coords = $areaSeries['coordinates'];
+                    $baseline = 208;
+                    $areaPath = 'M '.$coords->first()['x'].' '.$baseline;
+                    foreach ($coords as $point) {
+                        $areaPath .= ' L '.$point['x'].' '.$point['y'];
+                    }
+                    $areaPath .= ' L '.$coords->last()['x'].' '.$baseline.' Z';
+                }
+            @endphp
 
             @if ($isAdmin)
-                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3 bg-white p-4 shadow-sm rounded-lg">
+                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div class="w-full sm:max-w-xs">
                         <x-input-label for="technician_id" :value="__('Technician activity')" />
-                        <select id="technician_id" name="technician_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                        <select id="technician_id" name="technician_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">{{ __('All technicians and tickets') }}</option>
                             @foreach ($technicianOptions as $technician)
                                 <option value="{{ $technician->id }}" @selected($selectedTechnician?->id === $technician->id)>{{ $technician->name }}</option>
@@ -37,36 +81,61 @@
                         </select>
                         <x-input-error class="mt-1" :messages="$errors->get('technician_id')" />
                     </div>
-                    <x-primary-button>{{ __('Apply') }}</x-primary-button>
+                    <button type="submit" class="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700">{{ __('Apply') }}</button>
                     @if ($selectedTechnician)
                         <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Clear') }}</a>
                     @endif
                 </form>
             @endif
 
-            <section aria-label="{{ __('Service totals') }}" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div class="bg-white p-4 sm:p-5 shadow-sm rounded-lg border-l-4 border-gray-400">
-                    <p class="text-sm text-gray-500">{{ $isAdmin ? __('Total tickets') : ($isTechnician ? __('Assigned tickets') : __('My tickets')) }}</p>
-                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ $totalTickets }}</p>
+            {{-- Stat cards --}}
+            <section aria-label="{{ __('Service totals') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-5 text-white shadow-md">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-white/80">{{ $isAdmin ? __('Total tickets') : ($isTechnician ? __('Assigned tickets') : __('My tickets')) }}</p>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
+                            <x-icon name="queue" class="h-6 w-6" />
+                        </span>
+                    </div>
+                    <p class="mt-3 text-3xl font-bold">{{ $totalTickets }}</p>
                 </div>
-                <div class="bg-white p-4 sm:p-5 shadow-sm rounded-lg border-l-4 border-blue-500">
-                    <p class="text-sm text-gray-500">{{ __('Pending') }}</p>
-                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ $pendingCount }}</p>
-                    <p class="mt-1 text-xs text-gray-500">{{ __('Open and assigned') }}</p>
+
+                <div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 p-5 text-white shadow-md">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-white/80">{{ __('Pending') }}</p>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
+                            <x-icon name="clock" class="h-6 w-6" />
+                        </span>
+                    </div>
+                    <p class="mt-3 text-3xl font-bold">{{ $pendingCount }}</p>
+                    <p class="mt-1 text-xs text-white/70">{{ __('Open and assigned') }}</p>
                 </div>
-                <div class="bg-white p-4 sm:p-5 shadow-sm rounded-lg border-l-4 border-amber-500">
-                    <p class="text-sm text-gray-500">{{ __('In progress') }}</p>
-                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ $inProgressCount }}</p>
+
+                <div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-fuchsia-500 to-purple-600 p-5 text-white shadow-md">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-white/80">{{ __('In progress') }}</p>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
+                            <x-icon name="bolt" class="h-6 w-6" />
+                        </span>
+                    </div>
+                    <p class="mt-3 text-3xl font-bold">{{ $inProgressCount }}</p>
                 </div>
-                <div class="bg-white p-4 sm:p-5 shadow-sm rounded-lg border-l-4 border-emerald-600">
-                    <p class="text-sm text-gray-500">{{ __('Finished') }}</p>
-                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ $finishedCount }}</p>
-                    <p class="mt-1 text-xs text-gray-500">{{ __('Resolved and closed') }}</p>
+
+                <div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-5 text-white shadow-md">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-white/80">{{ __('Finished') }}</p>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
+                            <x-icon name="check" class="h-6 w-6" />
+                        </span>
+                    </div>
+                    <p class="mt-3 text-3xl font-bold">{{ $finishedCount }}</p>
+                    <p class="mt-1 text-xs text-white/70">{{ __('Resolved and closed') }}</p>
                 </div>
             </section>
 
+            {{-- Charts row --}}
             <div class="grid gap-6 xl:grid-cols-3">
-                <section class="bg-white p-4 sm:p-6 shadow-sm rounded-lg xl:col-span-2">
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 xl:col-span-2">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h3 class="font-medium text-gray-900">{{ __('Daily service flow') }}</h3>
@@ -82,16 +151,25 @@
                         </div>
                     </div>
                     <div class="mt-5 overflow-x-auto" role="region" aria-label="{{ __('Daily service activity chart') }}" tabindex="0">
-                        <svg viewBox="0 0 760 250" class="min-w-[620px] w-full" role="img" aria-labelledby="activity-chart-title activity-chart-description">
+                        <svg viewBox="0 0 760 250" class="w-full min-w-[620px]" role="img" aria-labelledby="activity-chart-title activity-chart-description">
                             <title id="activity-chart-title">{{ __('Daily service flow') }}</title>
                             <desc id="activity-chart-description">{{ __('A line chart showing ticket openings and work progress over the last 14 days.') }}</desc>
+                            <defs>
+                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#6366f1" stop-opacity="0.30" />
+                                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
                             @foreach ([0, 0.5, 1] as $fraction)
                                 @php($gridY = 208 - (170 * $fraction))
                                 <line x1="52" y1="{{ $gridY }}" x2="740" y2="{{ $gridY }}" stroke="#e5e7eb" stroke-width="1" />
                                 <text x="42" y="{{ $gridY + 4 }}" text-anchor="end" font-size="11" fill="#6b7280">{{ (int) round($chartMaximum * $fraction) }}</text>
                             @endforeach
+                            @if ($areaPath)
+                                <path d="{{ $areaPath }}" fill="url(#areaGradient)" />
+                            @endif
                             @foreach ($activitySeries as $series)
-                                <polyline points="{{ $series['points'] }}" fill="none" stroke="{{ $series['color'] }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                                <polyline points="{{ $series['points'] }}" fill="none" stroke="{{ $series['color'] }}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
                                 @foreach ($series['coordinates'] as $point)
                                     <circle cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="3.5" fill="{{ $series['color'] }}">
                                         <title>{{ $series['label'] }}: {{ $point['value'] }}</title>
@@ -107,31 +185,66 @@
                     </div>
                 </section>
 
-                <section class="bg-white p-4 sm:p-6 shadow-sm rounded-lg">
-                    <h3 class="font-medium text-gray-900">{{ __('Services by category') }}</h3>
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                    <h3 class="font-medium text-gray-900">{{ __('Status breakdown') }}</h3>
                     <p class="mt-1 text-sm text-gray-500">{{ __('Current ticket volume') }}</p>
-                    @if ($serviceMix->isEmpty())
-                        <p class="mt-6 text-sm text-gray-600">{{ __('No service requests in this view yet.') }}</p>
-                    @else
-                        <ul class="mt-5 space-y-4">
-                            @foreach ($serviceMix as $service)
-                                <li>
-                                    <div class="flex justify-between gap-3 text-sm">
-                                        <span class="truncate text-gray-700">{{ $service->name }}</span>
-                                        <span class="font-medium tabular-nums text-gray-900">{{ $service->total }}</span>
-                                    </div>
-                                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                                        <div class="h-full rounded-full bg-indigo-600" style="width: {{ round(100 * $service->total / $serviceMixMaximum) }}%"></div>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
+                    <div class="mt-5 flex items-center justify-center">
+                        <svg viewBox="0 0 120 120" class="h-44 w-44" role="img" aria-label="{{ __('Ticket status breakdown') }}">
+                            <g transform="rotate(-90 60 60)">
+                                <circle cx="60" cy="60" r="{{ $donutRadius }}" fill="none" stroke="#e5e7eb" stroke-width="16" />
+                                @foreach ($donutSegments as $segment)
+                                    <circle cx="60" cy="60" r="{{ $donutRadius }}" fill="none" stroke="{{ $segment['color'] }}" stroke-width="16" stroke-dasharray="{{ $segment['dasharray'] }}" stroke-dashoffset="{{ $segment['dashoffset'] }}" />
+                                @endforeach
+                            </g>
+                            <text x="60" y="57" text-anchor="middle" font-size="24" font-weight="700" fill="#111827">{{ $donutTotal }}</text>
+                            <text x="60" y="72" text-anchor="middle" font-size="11" fill="#6b7280">{{ __('tickets') }}</text>
+                        </svg>
+                    </div>
+                    <ul class="mt-5 space-y-2">
+                        @foreach ($statuses as $status)
+                            @php($count = (int) $statusCounts[$status->value])
+                            <li class="flex items-center justify-between gap-3 text-sm">
+                                <span class="inline-flex items-center gap-2 text-gray-700">
+                                    <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $donutColors[$status->value] ?? '#6366f1' }}"></span>
+                                    {{ $status->label() }}
+                                </span>
+                                <span class="font-medium tabular-nums text-gray-900">{{ $count }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
                 </section>
             </div>
 
+            {{-- Category mix --}}
+            <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-medium text-gray-900">{{ __('Services by category') }}</h3>
+                        <p class="mt-1 text-sm text-gray-500">{{ __('Current ticket volume') }}</p>
+                    </div>
+                    <a href="{{ route($ticketListRoute) }}" class="text-sm font-medium text-indigo-700 hover:text-indigo-900">{{ __('View all') }}</a>
+                </div>
+                @if ($serviceMix->isEmpty())
+                    <p class="mt-6 text-sm text-gray-600">{{ __('No service requests in this view yet.') }}</p>
+                @else
+                    <ul class="mt-5 grid gap-5 lg:grid-cols-2">
+                        @foreach ($serviceMix as $service)
+                            <li>
+                                <div class="flex justify-between gap-3 text-sm">
+                                    <span class="truncate text-gray-700">{{ $service->name }}</span>
+                                    <span class="font-medium tabular-nums text-gray-900">{{ $service->total }}</span>
+                                </div>
+                                <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500" style="width: {{ round(100 * $service->total / $serviceMixMaximum) }}%"></div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </section>
+
             @if ($isAdmin)
-                <section class="bg-white shadow-sm rounded-lg overflow-hidden">
+                <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                     <div class="flex flex-wrap items-end justify-between gap-3 p-4 sm:p-6">
                         <div>
                             <h3 class="font-medium text-gray-900">{{ __('Technician progress') }}</h3>
@@ -171,7 +284,7 @@
                     @endif
                 </section>
 
-                <section class="bg-white p-4 sm:p-6 shadow-sm rounded-lg">
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <h3 class="font-medium text-gray-900">{{ __('Recent service activity') }}</h3>
@@ -196,7 +309,7 @@
                     @endif
                 </section>
             @else
-                <section class="bg-white p-4 sm:p-6 shadow-sm rounded-lg">
+                <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     <div class="flex items-center justify-between gap-4">
                         <h3 class="font-medium text-gray-900">{{ $isTechnician ? __('Recently assigned tickets') : __('Recent tickets') }}</h3>
                         <a href="{{ route($ticketListRoute) }}" class="text-sm font-medium text-indigo-700 hover:text-indigo-900">{{ __('View all') }}</a>
@@ -218,15 +331,6 @@
                     @endif
                 </section>
             @endif
-
-            <section aria-label="{{ __('Ticket status breakdown') }}" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                @foreach ($statuses as $status)
-                    <a href="{{ route($ticketListRoute, ['status' => $status->value]) }}" class="bg-white p-4 shadow-sm rounded-lg hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">
-                        <p class="text-xs font-medium text-gray-500">{{ $status->label() }}</p>
-                        <p class="mt-1 text-xl font-semibold tabular-nums text-gray-900">{{ $statusCounts[$status->value] }}</p>
-                    </a>
-                @endforeach
-            </section>
         </div>
     </div>
 </x-app-layout>

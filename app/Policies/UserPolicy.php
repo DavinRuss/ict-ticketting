@@ -29,4 +29,28 @@ class UserPolicy
     {
         return $actor->isAdmin() && $actor->isNot($user);
     }
+
+    /**
+     * Quick deactivate from the account list. Admin accounts are protected:
+     * they can only lose access through a deliberate edit (demotion), which
+     * keeps at least one active admin at all times.
+     */
+    public function deactivate(User $actor, User $user): bool
+    {
+        return $actor->isAdmin() && $user->is_active && ! $user->isAdmin();
+    }
+
+    public function activate(User $actor, User $user): bool
+    {
+        return $actor->isAdmin() && ! $user->is_active;
+    }
+
+    /**
+     * Permanent removal. Admin accounts can never be removed; other accounts
+     * can only be removed when they have no ticket history (FK restrict).
+     */
+    public function delete(User $actor, User $user): bool
+    {
+        return $actor->isAdmin() && ! $user->isAdmin();
+    }
 }

@@ -56,7 +56,30 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('Edit') }}</a>
+                                    <div class="flex items-center justify-end gap-3">
+                                        <a href="{{ route('admin.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('Edit') }}</a>
+                                        @can('deactivate', $user)
+                                            <form method="POST" action="{{ route('admin.users.deactivate', $user) }}" onsubmit="return confirm('{{ __('Deactivate :name? They will be signed out and unable to log in.', ['name' => $user->name]) }}')">
+                                                @csrf
+                                                @method('PUT')
+                                                <button type="submit" class="text-amber-600 hover:text-amber-800">{{ __('Deactivate') }}</button>
+                                            </form>
+                                        @endcan
+                                        @can('activate', $user)
+                                            <form method="POST" action="{{ route('admin.users.activate', $user) }}">
+                                                @csrf
+                                                @method('PUT')
+                                                <button type="submit" class="text-green-600 hover:text-green-800">{{ __('Reactivate') }}</button>
+                                            </form>
+                                        @endcan
+                                        @can('delete', $user)
+                                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('{{ __('Remove :name permanently? This cannot be undone.', ['name' => $user->name]) }}')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800">{{ __('Remove') }}</button>
+                                            </form>
+                                        @endcan
+                                    </div>
                                 </td>
                             </tr>
                         @empty
