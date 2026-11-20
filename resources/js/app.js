@@ -6,6 +6,30 @@ import Alpine from 'alpinejs';
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 const userId = document.body?.dataset.userId;
+const userRole = document.body?.dataset.userRole;
+
+// Presence: every active technician/admin joins the "online" presence channel
+// so pages (e.g. the chat roster) can show who is currently connected.
+if (window.Echo && userId && (userRole === 'technician' || userRole === 'admin')) {
+	const onlineIds = new Set();
+	const publishPresence = () => {
+		window.dispatchEvent(new CustomEvent('app:presence', { detail: [...onlineIds] }));
+	};
+
+	window.Echo.join('online')
+		.here((members) => {
+			members.forEach((member) => onlineIds.add(String(member.id)));
+			publishPresence();
+		})
+		.joining((member) => {
+			onlineIds.add(String(member.id));
+			publishPresence();
+		})
+		.leaving((member) => {
+			onlineIds.delete(String(member.id));
+			publishPresence();
+		});
+}
 
 Alpine.data('notificationCenter', (initialUnread = 0) => ({
 	open: false,

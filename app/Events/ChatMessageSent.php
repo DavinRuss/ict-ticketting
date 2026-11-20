@@ -52,6 +52,7 @@ class ChatMessageSent implements ShouldBroadcastNow
                 'name' => $this->message->user->name,
                 'role' => $this->message->user->role->value,
             ],
+            'likes' => $this->message->likesCount(),
         ];
     }
 }

@@ -17,7 +17,7 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body x-data="{ sidebarOpen: false }" data-user-id="{{ auth()->id() }}" class="font-sans antialiased text-gray-900">
+    <body x-data="{ sidebarOpen: false }" data-user-id="{{ auth()->id() }}" data-user-role="{{ auth()->user()->role->value }}" class="font-sans antialiased text-gray-900">
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')
 

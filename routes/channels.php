@@ -22,3 +22,15 @@ Broadcast::channel('chat', function (User $user) {
 Broadcast::channel('App.Models.User.{id}', function (User $user, string $id) {
     return $user->is_active && (string) $user->getKey() === $id;
 });
+
+Broadcast::channel('online', function (User $user) {
+    if (! $user->is_active || ! $user->hasRole(UserRole::Technician, UserRole::Admin)) {
+        return false;
+    }
+
+    return [
+        'id' => $user->getKey(),
+        'name' => $user->name,
+        'role' => $user->role->value,
+    ];
+});

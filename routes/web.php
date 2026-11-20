@@ -63,6 +63,7 @@ Route::middleware(['auth', 'role:technician'])->prefix('technician')->name('tech
 Route::middleware(['auth', 'role:technician,admin'])->prefix('chat')->name('chat.')->group(function () {
     Route::get('/', [ChatController::class, 'index'])->name('index');
     Route::post('messages', [ChatController::class, 'store'])->name('messages.store');
+    Route::post('messages/{message}/react', [ChatController::class, 'react'])->name('messages.react');
 });
 
 require __DIR__.'/auth.php';

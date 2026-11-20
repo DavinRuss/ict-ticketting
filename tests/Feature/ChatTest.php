@@ -88,6 +88,55 @@ class ChatTest extends TestCase
         $this->actingAs($admin)->postJson('/chat/messages', ['body' => str_repeat('a', 2001)])->assertUnprocessable()->assertJsonValidationErrors('body');
     }
 
+    public function test_a_technician_can_like_and_unlike_a_message(): void
+    {
+        $author = User::factory()->admin()->create();
+        $fan = User::factory()->technician()->create();
+        $message = ChatMessage::factory()->for($author)->create();
+
+        $this->actingAs($fan)->postJson("/chat/messages/{$message->id}/react")
+            ->assertOk()
+            ->assertJsonPath('likes', 1)
+            ->assertJsonPath('liked', true);
+
+        $this->actingAs($fan)->postJson("/chat/messages/{$message->id}/react")
+            ->assertOk()
+            ->assertJsonPath('likes', 0)
+            ->assertJsonPath('liked', false);
+
+        $this->assertDatabaseCount('chat_message_reactions', 0);
+    }
+
+    public function test_likes_are_unique_per_user_and_regular_users_cannot_react(): void
+    {
+        $author = User::factory()->admin()->create();
+        $fan = User::factory()->technician()->create();
+        $message = ChatMessage::factory()->for($author)->create();
+
+        $this->actingAs($fan)->postJson("/chat/messages/{$message->id}/react")->assertOk();
+        $this->actingAs($fan)->postJson("/chat/messages/{$message->id}/react")->assertOk();
+
+        // Second call toggled off; like again and confirm only one row exists.
+        $this->actingAs($fan)->postJson("/chat/messages/{$message->id}/react")->assertOk();
+        $this->assertSame(1, $message->reactions()->count());
+
+        $regular = User::factory()->create();
+        $this->actingAs($regular)->postJson("/chat/messages/{$message->id}/react")->assertForbidden();
+    }
+
+    public function test_chat_page_shows_like_counts_and_the_viewers_own_like(): void
+    {
+        $author = User::factory()->admin()->create(['name' => 'Ada Admin']);
+        $fan = User::factory()->technician()->create();
+        $message = ChatMessage::factory()->for($author)->create(['body' => 'Nice work']);
+        $message->reactions()->create(['user_id' => $fan->id]);
+
+        $this->actingAs($fan)->get('/chat')
+            ->assertOk()
+            ->assertSee('Nice work')
+            ->assertSee('like-button');
+    }
+
     public function test_service_rejects_a_non_role_user(): void
     {
         $user = User::factory()->create();
