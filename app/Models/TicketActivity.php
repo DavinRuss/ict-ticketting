@@ -30,6 +30,14 @@ class TicketActivity extends Model
      */
     public const ACTION_WORK_NOTE = 'work_note';
 
+    public const ACTIONS = [
+        self::ACTION_CREATED,
+        self::ACTION_ASSIGNED,
+        self::ACTION_REASSIGNED,
+        self::ACTION_STATUS_CHANGED,
+        self::ACTION_WORK_NOTE,
+    ];
+
     protected function casts(): array
     {
         return [

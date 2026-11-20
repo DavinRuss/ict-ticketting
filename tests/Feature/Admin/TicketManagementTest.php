@@ -84,6 +84,45 @@ class TicketManagementTest extends TestCase
             ->assertSee('Assign technician');
     }
 
+    public function test_admin_can_assign_a_ticket_from_the_tickets_page(): void
+    {
+        $requester = User::factory()->create(['name' => 'Tess Requester']);
+        $technician = User::factory()->technician()->create(['name' => 'Tina Tech']);
+        $ticket = Ticket::factory()->for($requester, 'requester')->create(['title' => 'Printer queue is stuck']);
+
+        $this->actingAs($this->admin)->get('/tickets')
+            ->assertOk()
+            ->assertSee('All tickets')
+            ->assertSee('Tess Requester')
+            ->assertSee('Printer queue is stuck')
+            ->assertSee('name="technician_id"', false);
+
+        $this->actingAs($this->admin)->put("/tickets/{$ticket->id}/assignment", ['technician_id' => $technician->id])
+            ->assertRedirect('/tickets')
+            ->assertSessionHas('success', "{$ticket->reference} assigned to Tina Tech.");
+
+        $this->assertSame(TicketStatus::Assigned, $ticket->fresh()->status);
+        $this->assertSame($technician->id, $ticket->fresh()->assigned_to);
+        $this->assertDatabaseHas('ticket_activities', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $this->admin->id,
+            'action' => TicketActivity::ACTION_ASSIGNED,
+        ]);
+    }
+
+    public function test_non_admin_cannot_assign_a_ticket_from_the_tickets_page(): void
+    {
+        $ticket = Ticket::factory()->create();
+        $technician = User::factory()->technician()->create();
+
+        $this->actingAs(User::factory()->create())
+            ->put("/tickets/{$ticket->id}/assignment", ['technician_id' => $technician->id])
+            ->assertForbidden();
+
+        $this->assertSame(TicketStatus::Open, $ticket->fresh()->status);
+        $this->assertNull($ticket->fresh()->assigned_to);
+    }
+
     public function test_admin_navigation_links_to_all_tickets_only_for_admins(): void
     {
         $this->actingAs($this->admin)->get('/dashboard')->assertSee(route('admin.tickets.index'));
@@ -182,6 +221,21 @@ class TicketManagementTest extends TestCase
 
         $this->actingAs($this->admin)->get("/admin/tickets/{$ticket->id}")->assertSee('Assigned to Tina Tech')->assertSee('Ada Admin');
         $this->actingAs($ticket->requester)->get("/tickets/{$ticket->id}")->assertSee('Assigned to Tina Tech');
+    }
+
+    public function test_service_rejects_assignment_by_a_non_admin(): void
+    {
+        $ticket = Ticket::factory()->create();
+        $technician = User::factory()->technician()->create();
+
+        try {
+            app(TicketService::class)->assign($ticket, $technician, User::factory()->create());
+            $this->fail('A non-admin must not assign tickets.');
+        } catch (ValidationException) {
+            $this->assertSame(TicketStatus::Open, $ticket->fresh()->status);
+            $this->assertNull($ticket->fresh()->assigned_to);
+            $this->assertSame(0, $ticket->activities()->count());
+        }
     }
 
     public function test_reassignment_keeps_the_previous_assignment_in_history(): void

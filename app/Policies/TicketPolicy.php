@@ -50,6 +50,11 @@ class TicketPolicy
         return $actor->hasRole(UserRole::Technician) && $ticket->assigned_to === $actor->id;
     }
 
+    public function viewAssigned(User $actor): bool
+    {
+        return $actor->hasRole(UserRole::Technician);
+    }
+
     public function addWorkNote(User $actor, Ticket $ticket): bool
     {
         return $this->work($actor, $ticket);
@@ -63,11 +68,25 @@ class TicketPolicy
         return $this->view($actor, $ticket);
     }
 
+    public function comment(User $actor, Ticket $ticket): bool
+    {
+        return $this->view($actor, $ticket);
+    }
+
     /**
      * Which statuses each role may set is decided by TicketStatus::transitionsFor().
      */
     public function changeStatus(User $actor, Ticket $ticket): bool
     {
         return $actor->isAdmin() || $this->work($actor, $ticket);
+    }
+
+    /**
+     * Permanently erase a ticket and its history. Admin-only; TicketService removes
+     * the dependent rows before the ticket itself.
+     */
+    public function delete(User $actor, Ticket $ticket): bool
+    {
+        return $actor->isAdmin();
     }
 }

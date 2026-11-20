@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\UserRole;
+use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -204,6 +205,70 @@ class UserManagementTest extends TestCase
         $this->assertSame(UserRole::User, $bob->fresh()->role);
     }
 
+    public function test_admin_can_set_a_new_password_for_an_account(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$user->id}", [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'is_active' => '1',
+            'password' => 'brand-new-pass',
+            'password_confirmation' => 'brand-new-pass',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('brand-new-pass', $user->fresh()->password));
+    }
+
+    public function test_admin_can_reset_another_admins_password(): void
+    {
+        $other = User::factory()->admin()->create();
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$other->id}", [
+            'name' => $other->name,
+            'email' => $other->email,
+            'role' => 'admin',
+            'is_active' => '1',
+            'password' => 'admin-new-pass',
+            'password_confirmation' => 'admin-new-pass',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('admin-new-pass', $other->fresh()->password));
+    }
+
+    public function test_leaving_the_password_blank_keeps_the_current_one(): void
+    {
+        $user = User::factory()->create();
+        $hash = $user->password;
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$user->id}", [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($hash, $user->fresh()->password);
+    }
+
+    public function test_password_change_requires_confirmation(): void
+    {
+        $user = User::factory()->create();
+        $hash = $user->password;
+
+        $this->actingAs($this->admin)->patch("/admin/users/{$user->id}", [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'is_active' => '1',
+            'password' => 'brand-new-pass',
+            'password_confirmation' => 'something-else',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertSame($hash, $user->fresh()->password);
+    }
+
     public function test_email_must_stay_unique_when_editing(): void
     {
         $user = User::factory()->create();
@@ -215,6 +280,70 @@ class UserManagementTest extends TestCase
             'role' => 'user',
             'is_active' => '1',
         ])->assertSessionHasErrors('email');
+    }
+
+    public function test_admin_can_deactivate_an_account_from_the_list(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin)->put("/admin/users/{$user->id}/deactivate")
+            ->assertRedirect('/admin/users')->assertSessionHas('success');
+
+        $this->assertFalse($user->fresh()->is_active);
+    }
+
+    public function test_admin_can_reactivate_an_account_from_the_list(): void
+    {
+        $user = User::factory()->inactive()->create();
+
+        $this->actingAs($this->admin)->put("/admin/users/{$user->id}/activate")
+            ->assertRedirect('/admin/users')->assertSessionHas('success');
+
+        $this->assertTrue($user->fresh()->is_active);
+    }
+
+    public function test_admin_can_remove_an_account_without_history(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin)->delete("/admin/users/{$user->id}")
+            ->assertRedirect('/admin/users')->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+    }
+
+    public function test_an_account_with_ticket_history_cannot_be_removed(): void
+    {
+        $user = User::factory()->create();
+        Ticket::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($this->admin)->delete("/admin/users/{$user->id}")
+            ->assertRedirect('/admin/users')->assertSessionHas('error');
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    public function test_admin_accounts_cannot_be_deactivated_or_removed_from_the_list(): void
+    {
+        $other = User::factory()->admin()->create();
+
+        $this->actingAs($this->admin)->put("/admin/users/{$other->id}/deactivate")->assertForbidden();
+        $this->actingAs($this->admin)->delete("/admin/users/{$other->id}")->assertForbidden();
+        $this->actingAs($this->admin)->put("/admin/users/{$this->admin->id}/deactivate")->assertForbidden();
+        $this->actingAs($this->admin)->delete("/admin/users/{$this->admin->id}")->assertForbidden();
+
+        $this->assertTrue($other->fresh()->is_active);
+        $this->assertDatabaseHas('users', ['id' => $other->id]);
+    }
+
+    public function test_non_admins_cannot_reach_the_account_actions(): void
+    {
+        $technician = User::factory()->technician()->create();
+        $user = User::factory()->create();
+
+        $this->actingAs($technician)->put("/admin/users/{$user->id}/deactivate")->assertForbidden();
+        $this->actingAs($technician)->put("/admin/users/{$user->id}/activate")->assertForbidden();
+        $this->actingAs($technician)->delete("/admin/users/{$user->id}")->assertForbidden();
     }
 
     public function test_promote_admin_command_promotes_an_existing_account(): void

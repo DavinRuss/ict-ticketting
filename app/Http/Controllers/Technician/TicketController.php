@@ -7,13 +7,13 @@ use App\Enums\TicketStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWorkNoteRequest;
+use App\Http\Requests\Technician\TicketIndexRequest as TechnicianTicketIndexRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Models\Ticket;
 use App\Services\TicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -25,7 +25,7 @@ class TicketController extends Controller
     /**
      * Filter value for tickets still needing work (assigned or in progress).
      */
-    public const ACTIVE = 'active';
+    public const ACTIVE = TechnicianTicketIndexRequest::ACTIVE;
 
     private const ACTIVE_STATUSES = [TicketStatus::Assigned, TicketStatus::InProgress];
 
@@ -51,12 +51,9 @@ class TicketController extends Controller
         ]);
     }
 
-    public function index(Request $request): View
+    public function index(TechnicianTicketIndexRequest $request): View
     {
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::in([self::ACTIVE, ...TicketStatus::values()])],
-            'priority' => ['nullable', Rule::enum(TicketPriority::class)],
-        ]);
+        $filters = $request->validated();
 
         $tickets = $request->user()->assignedTickets()
             ->with(['requester', 'category'])
@@ -83,11 +80,13 @@ class TicketController extends Controller
 
         $ticket->load([
             'requester', 'category', 'assigner',
-            'activities' => fn ($query) => $query->with(['user', 'fromTechnician', 'toTechnician'])->oldest()->oldest('id'),
         ]);
 
         return view('technician.tickets.show', [
             'ticket' => $ticket,
+            'comments' => $ticket->comments()->with('user')->paginate(15, ['*'], 'comments_page')->withQueryString(),
+            'activities' => $ticket->activities()->with(['user', 'fromTechnician', 'toTechnician'])
+                ->oldest()->oldest('id')->paginate(15, ['*'], 'activities_page')->withQueryString(),
             'nextStatuses' => $ticket->status->transitionsFor(UserRole::Technician),
         ]);
     }

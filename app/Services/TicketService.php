@@ -7,9 +7,13 @@ use App\Enums\UserRole;
 use App\Models\Review;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
+use App\Models\TicketComment;
 use App\Models\User;
+use App\Notifications\TicketAssignedNotification;
+use App\Notifications\TicketCreatedNotification;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class TicketService
@@ -21,7 +25,7 @@ class TicketService
      */
     public function create(User $requester, array $data): Ticket
     {
-        return DB::transaction(function () use ($requester, $data) {
+        $ticket = DB::transaction(function () use ($requester, $data) {
             $ticket = new Ticket($data);
             $ticket->requester()->associate($requester);
             $ticket->status = TicketStatus::Open;
@@ -35,6 +39,15 @@ class TicketService
 
             return $ticket;
         });
+
+        $admins = User::query()
+            ->where('role', UserRole::Admin)
+            ->where('is_active', true)
+            ->get();
+
+        Notification::send($admins, new TicketCreatedNotification($ticket->loadMissing('requester')));
+
+        return $ticket;
     }
 
     /**
@@ -45,7 +58,13 @@ class TicketService
      */
     public function assign(Ticket $ticket, User $technician, User $actor, ?string $note = null): Ticket
     {
-        return DB::transaction(function () use ($ticket, $technician, $actor, $note) {
+        $ticket = DB::transaction(function () use ($ticket, $technician, $actor, $note) {
+            $actor = User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
+
+            if (! $actor->isAdmin() || ! $actor->is_active) {
+                throw $this->rejected('assignment', 'technician_id', __('Only an active admin can assign or reassign a technician.'));
+            }
+
             $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
             $technician = User::query()->whereKey($technician->getKey())->lockForUpdate()->firstOrFail();
 
@@ -84,6 +103,10 @@ class TicketService
 
             return $ticket;
         });
+
+        $technician->notify(new TicketAssignedNotification($ticket));
+
+        return $ticket;
     }
 
     /**
@@ -165,6 +188,25 @@ class TicketService
         });
     }
 
+    /** Add a public comment from the ticket requester. */
+    public function addComment(Ticket $ticket, User $requester, string $body): TicketComment
+    {
+        return DB::transaction(function () use ($ticket, $requester, $body) {
+            $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($ticket->user_id !== $requester->id) {
+                throw $this->rejected('comment', 'body', __('Only the person who submitted this ticket can comment.'));
+            }
+
+            $comment = new TicketComment(['body' => $body]);
+            $comment->ticket()->associate($ticket);
+            $comment->user()->associate($requester);
+            $comment->save();
+
+            return $comment;
+        });
+    }
+
     /**
      * Record the requester's satisfaction review. One per ticket, only once the
      * ticket is resolved or closed; the unique index on reviews.ticket_id backs this up.
@@ -214,6 +256,31 @@ class TicketService
             $review->update(['rating' => $rating, 'comment' => $comment]);
 
             return $review;
+        });
+    }
+
+    /**
+     * Permanently erase a ticket together with everything attached to it: activities,
+     * public comments and any satisfaction review. The dependent rows are removed first
+     * because their foreign keys RESTRICT deletion of the parent. Admin-only; the policy
+     * authorizes the request, and the actor is re-checked here as defence in depth.
+     */
+    public function delete(Ticket $ticket, User $actor): void
+    {
+        DB::transaction(function () use ($ticket, $actor) {
+            $actor = User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
+
+            if (! $actor->isAdmin() || ! $actor->is_active) {
+                throw $this->rejected('delete', 'ticket', __('Only an active admin can erase a ticket.'));
+            }
+
+            $ticket = Ticket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
+
+            $ticket->activities()->delete();
+            $ticket->comments()->delete();
+            $ticket->review()->delete();
+
+            $ticket->delete();
         });
     }
 

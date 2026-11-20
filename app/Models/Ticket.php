@@ -77,6 +77,11 @@ class Ticket extends Model
         return $this->hasMany(TicketActivity::class);
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TicketComment::class)->oldest('created_at')->oldest('id');
+    }
+
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);

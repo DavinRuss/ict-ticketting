@@ -16,9 +16,11 @@
                     <p class="mt-2 whitespace-pre-line text-gray-900">{{ $ticket->description }}</p>
                 </div>
 
+                @include('tickets.partials.comments', ['ticket' => $ticket, 'allowCommentForm' => true])
+
                 @include('tickets.partials.requester-review', ['ticket' => $ticket])
 
-                @include('tickets.partials.activity-timeline', ['activities' => $ticket->activities])
+                @include('tickets.partials.activity-timeline', ['activities' => $activities])
             </div>
 
             <div class="bg-white p-4 sm:p-6 shadow-sm sm:rounded-lg h-fit">
